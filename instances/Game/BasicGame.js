@@ -1,9 +1,8 @@
-import EventEmitter from 'events'
 import { Card } from '../Card.js'
 import Player from '../Player.js'
 
 // 游戏基类
-class BasicGame extends EventEmitter {
+class BasicGame {
 	gameClock = null // 游戏时钟
 	
 	players = [] // 玩家
@@ -17,7 +16,6 @@ class BasicGame extends EventEmitter {
 	}
 	
 	constructor(options) {
-		super()
 		this.players = options.players
 		this.deckCards = options.deckCards
 	}
@@ -32,7 +30,7 @@ class BasicGame extends EventEmitter {
 		 */
 		const emitOne = (player) => {
 			if (player instanceof Player) {
-				player.emit(event, data)
+				player.emit(options.event, options.data)
 			}
 		}
 		
@@ -40,18 +38,21 @@ class BasicGame extends EventEmitter {
 			options.to.forEach(player => {
 				emitOne(player)
 			})
+		} else {
+			emitOne(options.to)
 		}
 	}
 	
 	start(options) {
 		// 每人发n张牌
 		Array.from(this.players, player => player.addCards(this.deckCards.draw(options.initCardCount || 6)))
-		// this.boardcast({
-		// 	to: this.players,
-		// 	event: 'players-changed',
-		// 	data: this.players
-		// })
-		this.emit('players-changed', this.players)
+		
+		// 给所有人发送玩家数据广播(用户信息、手牌)
+		this.boardcast({
+			to: this.players,
+			event: 'players-changed',
+			data: this.players
+		})
 		
 		this.setState({
 			direction: Math.random() < 0.5 ? 'cw' : 'acw', // 随机取逆时针/顺时针
@@ -83,24 +84,32 @@ class BasicGame extends EventEmitter {
 	
 	setState(state) {
 		const result = Object.assign(this.state, state)
-		this.emit('state-changed', {
-			currentPlayer: this.players[result.currentPlayerIndex],
-			seconds: this.state.seconds
+		this.boardcast({
+			to: this.players,
+			event: 'state-changed',
+			data: {
+				currentPlayer: this.players[result.currentPlayerIndex],
+				seconds: this.state.seconds
+			}
 		})
 		return result
 	}
 	
 	draw() {
+		const currentPlayer = this.players[this.state.currentPlayerIndex]
 		const [card] = this.deckCards.draw()
-		this.players[this.state.currentPlayerIndex].addCards(card)
-		this.emit('players-changed', this.players)
+		currentPlayer.addCards(card)
 		
 		if (this.canIPlay(card)) {
 			// 如果抽回来的牌能打 则让玩家选择保留或打出
-			this.emit('is-replay', card)
+			this.boardcast({
+				to: currentPlayer,
+				event: 'is-replay',
+				data: card
+			})
 			
 			// 返回is-replay-callback事件且类型为noreplay，则选择保留，结束回合（若类型为replay 选择打出,则交由play事件处理）
-			this.once('is-replay-callback', (type) => {
+			currentPlayer.once('is-replay-callback', (type) => {
 				if (type === 'noreplay') {
 					this.setState({ currentPlayerIndex: this.getNextPlayerIndex() })
 				}
@@ -149,7 +158,13 @@ class BasicGame extends EventEmitter {
 			pushOne(cards)
 		}
 		
-		this.emit('passcardpool-changed', this.passCardPool)
+		// 牌堆发生变化 向所有玩家推送牌堆变化事件
+		this.boardcast({
+			to: this.players,
+			event: 'passcardpool-changed',
+			data: this.passCardPool
+		})
+		
 		return this.passCardPool
 	}
 	
@@ -157,26 +172,36 @@ class BasicGame extends EventEmitter {
 		if (!this.canIPlay(options.card)) {
 			throw new Error('此牌不能出')
 		}
+		
+		if (options.player !== this.players[this.state.currentPlayerIndex]) {
+			throw new Error('还没轮到你出')
+		}
+		
+		const currentPlayer = this.players[this.state.currentPlayerIndex]
+		
 		this.playAction(options)
 		
 		// 将要出的牌从手牌中移除
-		this.players.map((player) => {
-			player.removeCards(options.card)
-		})
+		currentPlayer.removeCards(options.card)
 		
 		// 将要出的牌放入已出牌堆
 		this.addPass(options.card)
 		
-		if (options.player.cards.length === 0) {
+		if (currentPlayer.cards.length === 0) {
 			clearInterval(this.gameClock)
 			this.gameEndAction()
 			return
 		}
 		
 		// 如果手牌剩下一张，没有喊uno的话抽2张
-		if (options.player.cards.length === 1 && !options.player.isUno) {
-			this.emit('no-uno-draw', options.player)
-			options.player.addCards(this.deckCards.draw(2))
+		if (currentPlayer.cards.length === 1 && !currentPlayer.isUno) {
+			// 发送没喊uno广播
+			this.boardcast({
+				to: currentPlayer,
+				event: 'no-uno-draw'
+			})
+
+			currentPlayer.addCards(this.deckCards.draw(2))
 		}
 		
 		this.setState({ currentPlayerIndex: this.getNextPlayerIndex() })
@@ -194,7 +219,10 @@ class BasicGame extends EventEmitter {
 	
 	uno(options) {
 		// 喊uno
-		options.player.isUno = true
+		const currentPlayer = this.players[this.state.currentPlayerIndex]
+		if (options.player === currentPlayer) {
+			currentPlayer.isUno = true
+		}
 	}
 	
 	gameEndAction() {

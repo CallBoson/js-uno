@@ -63,13 +63,16 @@ class NormalGame extends BasicGame {
 			}
 			
 			// 发送是否质疑+4事件
-			this.emit('is-query-wd')
+			this.boardcast({
+				to: doubtSidePlayer,
+				event: 'is-query-wd'
+			})
 			
 			const drawFunc = () => {
 				// 接受加牌
 				doubtSidePlayer.addCards(this.deckCards.draw(4))
 				this.setState({ currentPlayerIndex: this.getNextPlayerIndex() })
-				this.removeListener('is-query-wd-doubt', doubtFunc)
+				doubtSidePlayer.removeListener('is-query-wd-doubt', doubtFunc)
 			}
 			
 			const doubtFunc = () => {
@@ -77,17 +80,29 @@ class NormalGame extends BasicGame {
 				// 质疑则判断打出+4的玩家有没有与牌堆最后一只相同颜色的手牌，有则质疑成功（打出+4方加6只），否则失败（质疑方加6只）
 				if (playSidePlayer.cards.some(card => card.color === referCard.color)) {
 					playSidePlayer.addCards(this.deckCards.draw(4))
-					this.emit('is-query-wd-success') // 质疑成功事件
+					
+					// 若质疑成功，向全部玩家通知
+					this.boardcast({
+						to: this.players,
+						event: 'is-query-wd-success',
+						data: doubtSidePlayer
+					})
 				} else {
 					doubtSidePlayer.addCards(this.deckCards.draw(6))
 					this.setState({ currentPlayerIndex: this.getNextPlayerIndex() })
-					this.emit('is-query-wd-fail') // 质疑失败事件
+					
+					// 质疑失败，与质疑成功同理
+					this.boardcast({
+						to: this.players,
+						event: 'is-query-wd-fail',
+						data: doubtSidePlayer
+					})
 				}
-				this.removeListener('is-query-wd-draw', drawFunc)
+				doubtSidePlayer.removeListener('is-query-wd-draw', drawFunc)
 			}
 			
-			this.once('is-query-wd-draw', drawFunc)
-			this.once('is-query-wd-doubt', doubtFunc)
+			doubtSidePlayer.once('is-query-wd-draw', drawFunc)
+			doubtSidePlayer.once('is-query-wd-doubt', doubtFunc)
 			return
 		}
 		
@@ -117,8 +132,9 @@ class NormalGame extends BasicGame {
 		if (hasPlayerFinish) {
 			// 有玩家的手牌已经出完
 			hasPlayerFinish.changeCoins(3000)
-			this.emit('game-end', {
-				winner: hasPlayerFinish
+			this.boardcast({
+				to: this.players,
+				event: 'game-end'
 			})
 		} else {
 			// 倒计时结束

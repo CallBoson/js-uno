@@ -85,9 +85,9 @@
 		methods: {
 			init() {
 				const user1 = uni.user
-				const user2 = new User({ nickname: 'Computer', coins: 100 })
-				const user3 = new User({ nickname: 'test', coins: 100 })
-				const user4 = new User({ nickname: 'Computer', coins: 100 })
+				const user2 = new User({ nickname: 'Computer1', coins: 100 })
+				const user3 = new User({ nickname: '队友', coins: 100 })
+				const user4 = new User({ nickname: 'Computer2', coins: 100 })
 				
 				this.self_user = user1 // 自己
 				
@@ -99,82 +99,85 @@
 						user4
 					]
 				})
-							
-				game.on('players-changed', (players) => {
-					this.players = players
-				})
 				
-				game.on('passcardpool-changed', cards => {
-					this.passCardPool = cards
-				})
-				
-				game.on('state-changed', state => {
-					this.current_player = state.currentPlayer
-					this.gameSeconds = state.seconds
-				})
-				
-				
-				game.on('is-replay', (card) => {
-					// 抽回来的牌能打出 询问是否需要打出
-					this.current_select = card
-					this.$refs['replay-popup'].open()
-				})
-				
-				game.on('no-uno-draw', () => {
-					// 没有喊uno
-					uni.showToast({
-						icon: 'none',
-						title: '没有喊uno哦~'
+				game.players.forEach(player => {
+					player.on('players-changed', (players) => {
+						this.players = players
 					})
-				})
-				
-				game.on('is-query-wd-success', () => {
-					// 质疑成功
-					uni.showToast({
-						icon: 'success',
-						title: '质疑成功'
+					
+					player.on('passcardpool-changed', cards => {
+						this.passCardPool = cards
 					})
-				})
-				
-				game.on('is-query-wd-fail', () => {
-					// 质疑失败
-					uni.showToast({
-						icon: 'error',
-						title: '质疑失败'
+					
+					player.on('state-changed', state => {
+						this.current_player = state.currentPlayer
+						this.gameSeconds = state.seconds
 					})
-				})
-				
-				game.on('is-query-wd', () => {
-					uni.showModal({
-						content: '对方打出了+4牌，是否接受加牌/质疑',
-						cancelText: '接受加牌',
-						confirmText: '质疑',
-						success: (res) => {
-							if (res.cancel) {
-								// 接受加牌
-								game.emit('is-query-wd-draw')
-							} else {
-								// 质疑
-								game.emit('is-query-wd-doubt')
+					
+					
+					player.on('is-replay', (card) => {
+						// 抽回来的牌能打出 询问是否需要打出
+						this.current_select = card
+						this.$refs['replay-popup'].open()
+					})
+					
+					player.on('no-uno-draw', () => {
+						// 没有喊uno
+						console.log(`${player.nickname} 没有喊UNO，+2张`);
+						uni.showToast({
+							icon: 'none',
+							title: '没有喊uno哦~'
+						})
+					})
+					
+					player.on('is-query-wd-success', () => {
+						// 质疑成功
+						uni.showToast({
+							icon: 'success',
+							title: '质疑成功'
+						})
+					})
+					
+					player.on('is-query-wd-fail', () => {
+						// 质疑失败
+						uni.showToast({
+							icon: 'error',
+							title: '质疑失败'
+						})
+					})
+					
+					player.on('is-query-wd', () => {
+						console.log(`${player.nickname} 收到质疑广播`);
+						uni.showModal({
+							content: '对方打出了+4牌，是否接受加牌/质疑',
+							cancelText: '接受加牌',
+							confirmText: '质疑',
+							success: (res) => {
+								if (res.cancel) {
+									// 接受加牌
+									player.emit('is-query-wd-draw')
+								} else {
+									// 质疑
+									player.emit('is-query-wd-doubt')
+								}
 							}
+						})
+					})
+					
+					player.on('game-end', options => {
+						if (options.winner.uid === this.self_user.uid) {
+							uni.showToast({
+								title: '胜利啦！！',
+								icon: 'none'
+							});
+						} else {
+							uni.showToast({
+								title: '失败～',
+								icon: 'none'
+							});
 						}
 					})
-				})
-				
-				game.on('game-end', options => {
-					if (options.winner.uid === this.self_user.uid) {
-						uni.showToast({
-							title: '胜利啦！！',
-							icon: 'none'
-						});
-					} else {
-						uni.showToast({
-							title: '失败～',
-							icon: 'none'
-						});
-					}
-				})
-				
+				})	
 			},
 			
 			startGame() {
