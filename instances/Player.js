@@ -3,11 +3,16 @@ import User from './User.js'
 
 // 玩家类
 class Player extends User {
+	game = null
 	cards = []
 	isUno = false // 是否喊了Uno
 	
 	constructor(user) {
 		super(user)
+	}
+	
+	setGame(game) {
+		this.game = game
 	}
 	
 	removeCards(cards) {
@@ -58,6 +63,84 @@ class Player extends User {
 	
 	get cards() {
 		return this.cards
+	}
+	
+	play(options) {
+		if (!this.game.canIPlay(options.card)) {
+			throw new Error('必须要同颜色或同牌型才能出')
+			return
+		}
+		
+		if (this.game.state.currentPlayer !== this) {
+			throw new Error('还没轮到你的回合')
+			return
+		}
+		
+		this.game.playAction(options)
+		
+		// 将要出的牌从手牌中移除
+		this.removeCards(options.card)
+		
+		// 将要出的牌放入已出牌堆
+		this.game.addPass(options.card)
+		
+		// 若手牌打完，则清除计时器并执行游戏结束动作
+		if (this.cards.length === 0) {
+			clearInterval(this.game.gameClock)
+			this.game.gameEndAction()
+			return
+		}
+		
+		// 如果手牌剩下一张，没有喊uno的话抽2张
+		if (this.cards.length === 1 && !this.isUno) {
+			// 发送没喊uno广播
+			this.game.boardcast({
+				to: this.game.players,
+				event: 'no-uno-draw',
+				data: this
+			})
+		
+			this.addCards(this.game.deckCards.draw(2))
+		}
+		
+		this.game.nextPlayerRound()
+	}
+	
+	draw() {
+		if (this.game.state.currentPlayer !== this) {
+			throw new Error('还没轮到你的回合')
+		}
+		
+		const [card] = this.game.deckCards.draw()
+		this.addCards(card)
+		
+		if (this.game.canIPlay(card)) {
+			// 返回is-replay-callback事件且类型为noreplay，则选择保留，结束回合（若类型为replay 选择打出,则交由play事件处理）
+			this.once('is-replay-callback', (type) => {
+				if (type === 'noreplay') {
+					this.game.nextPlayerRound()
+				}
+			})
+			
+			// 如果抽回来的牌能打 则让玩家选择保留或打出
+			this.game.boardcast({
+				to: this,
+				event: 'is-replay',
+				data: card
+			})
+			return
+		}
+				
+		this.game.nextPlayerRound()
+	}
+	
+	uno() {
+		// 喊uno
+		if (this.game.players[this.game.state.currentPlayerIndex] !== this) {
+			throw new Error('还没轮到你的回合')
+		}
+		
+		this.isUno = true
 	}
 }
 

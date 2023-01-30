@@ -17,6 +17,7 @@ class User extends EventEmitter {
 	    this.nickname = options.nickname
 		this.avatarUrl = options.avatarUrl
 		this.coins = options.coins
+		this.isComputer = options.isComputer
 	}
 	
 	get coins() {

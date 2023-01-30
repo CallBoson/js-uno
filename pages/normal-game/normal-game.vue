@@ -42,7 +42,6 @@
 <script>
 	import Game from '../../instances/Game/NormalGame.js'
 	import User from '../../instances/User.js'
-	import Computer from '../../instances/Computer/BasicComputer.js'
 	
 	let game = null
 	
@@ -86,9 +85,9 @@
 		methods: {
 			init() {
 				const user1 = uni.user
-				const user2 = new Computer({ nickname: 'Computer1', coins: 100 })
-				const user3 = new Computer({ nickname: 'Computer2', coins: 100 })
-				const user4 = new Computer({ nickname: 'Computer3', coins: 100 })
+				const user2 = new User({ nickname: 'Computer1', coins: 100, isComputer: true })
+				const user3 = new User({ nickname: 'Computer2', coins: 100, isComputer: true })
+				const user4 = new User({ nickname: 'Computer3', coins: 100, isComputer: true })
 				
 				this.self_user = user1 // 自己
 				
@@ -98,7 +97,9 @@
 						user2,
 						user3,
 						user4
-					]
+					],
+					initCardCount: 6,
+					gameTime: 180
 				})
 				
 				this.rate = game.rate
@@ -111,6 +112,10 @@
 				
 				player.on('passcardpool-changed', cards => {
 					this.passCardPool = cards
+				})
+				
+				player.on('your-round', () => {
+					console.log(`${player.nickname}：到我的回合了`);
 				})
 				
 				player.on('state-changed', state => {
@@ -133,11 +138,11 @@
 					})
 				})
 				
-				player.on('is-query-wd-success', () => {
+				player.on('is-query-wd-success', (player) => {
 					// 质疑成功
 					uni.showToast({
 						icon: 'success',
-						title: '质疑成功'
+						title: `${player.nickname}：质疑成功`
 					})
 				})
 				
@@ -145,7 +150,7 @@
 					// 质疑失败
 					uni.showToast({
 						icon: 'error',
-						title: '质疑失败'
+						title: `${player.nickname}：质疑失败`
 					})
 				})
 				
@@ -172,6 +177,7 @@
 						console.log(`第${playerScore.rank}名：${playerScore.player.nickname} 手牌分数：${playerScore.score} 金币：${playerScore.coins}`);
 					})
 				})
+
 			},
 			
 			startGame() {
@@ -197,10 +203,10 @@
 					this.$refs['color-popup'].open()
 					return
 				}
+			
 				
 				try {
-					game.play({
-						player: this.current_player,
+					this.current_player.play({
 						card: this.current_select,
 					})
 				} catch(err) {
@@ -220,8 +226,7 @@
 						
 			playWithColor(color) {
 				this.$refs['color-popup'].close()
-				game.play({
-					player: this.current_player,
+				this.current_player.play({
 					card: this.current_select,
 					turnToColor: color
 				})
@@ -229,10 +234,6 @@
 			
 			selectCard(isSelf, card) {
 				if (!isSelf) {
-					uni.showToast({
-						icon: 'none',
-						title: '还没轮到你出牌呢~'
-					})
 					return
 				}
 				
@@ -240,15 +241,18 @@
 			},
 			
 			draw() {
-				game.draw({
-					player: this.current_player
-				})
+				try {
+					this.current_player.draw()
+				} catch(err) {
+					uni.showToast({
+						icon: 'none',
+						title: err.toString()
+					})
+				}
 			},
 			
 			uno() {
-				game.uno({
-					player: this.current_player
-				})
+				this.current_player.uno()
 				uni.showToast({
 					icon: 'none',
 					title: 'UNO~~~~~'

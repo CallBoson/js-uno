@@ -3,6 +3,11 @@ import Player from '../Player.js'
 
 // 游戏基类
 class BasicGame {
+	_config = {
+		initCardCount: 6,
+		gameTime: 180
+	}
+	
 	gameClock = null // 游戏时钟
 	
 	players = [] // 玩家
@@ -11,13 +16,19 @@ class BasicGame {
 	
 	state = {
 		direction: 'cw', // 随机取逆时针/顺时针
-		currentPlayerIndex: 0, // 当前出牌玩家index
+		currentPlayer: undefined, // 当前出牌玩家
 		seconds: 0 ,// 剩余游戏秒数
 	}
 	
 	constructor(options) {
 		this.players = options.players
 		this.deckCards = options.deckCards
+		this._config.initCardCount = options.initCardCount || 6
+		this._config.gameTime = options.gameTime || 180
+		
+		this.players.forEach(player => {
+			player.setGame(this)
+		})
 	}
 	
 	boardcast(options) {
@@ -43,9 +54,42 @@ class BasicGame {
 		}
 	}
 	
+	nextPlayerRound() {
+		// 通知下一家可以出牌
+		this.setState({
+			currentPlayer: this.getNextPlayer()
+		})
+		
+		this.boardcast({
+			to: this.state.currentPlayer,
+			event: 'your-round'
+		})
+	}
+	
+	getNextPlayer() {
+		const currentIndex = this.players.findIndex(player => player === this.state.currentPlayer)
+		if (this.state.direction === 'cw') {
+			if (currentIndex === this.players.length - 1) {
+				return this.players[0]
+			} else {
+				return this.players[currentIndex + 1]
+			}
+			return
+		}
+		
+		if (this.state.direction === 'acw') {
+			if (currentIndex === 0) {
+				return this.players[this.players.length - 1]
+			} else {
+				return this.players[currentIndex - 1]
+			}
+			return
+		}
+	}
+	
 	start(options) {
-		// 每人发n张牌
-		Array.from(this.players, player => player.addCards(this.deckCards.draw(options.initCardCount || 6)))
+		// 每人抽n张牌
+		Array.from(this.players, player => player.addCards(this.deckCards.draw(this._config.initCardCount)))
 		
 		// 给所有人发送玩家数据广播(用户信息、手牌)
 		this.boardcast({
@@ -56,8 +100,8 @@ class BasicGame {
 		
 		this.setState({
 			direction: Math.random() < 0.5 ? 'cw' : 'acw', // 随机取逆时针/顺时针
-			currentPlayerIndex: Math.floor(Math.random() * this.players.length), // 随机取出牌玩家
-			seconds: options.seconds || 180, // 默认180秒
+			currentPlayer: this.players[Math.floor(Math.random() * this.players.length)], // 随机取出牌玩家
+			seconds: this._config.gameTime
 		})
 		
 		// 开局随机抽一张牌并放入已出牌堆
@@ -80,6 +124,8 @@ class BasicGame {
 				return
 			}
 		}, 800)
+		
+		this.nextPlayerRound()
 	}
 	
 	setState(state) {
@@ -88,56 +134,11 @@ class BasicGame {
 			to: this.players,
 			event: 'state-changed',
 			data: {
-				currentPlayer: this.players[result.currentPlayerIndex],
+				currentPlayer: result.currentPlayer,
 				seconds: this.state.seconds
 			}
 		})
 		return result
-	}
-	
-	draw() {
-		const currentPlayer = this.players[this.state.currentPlayerIndex]
-		const [card] = this.deckCards.draw()
-		currentPlayer.addCards(card)
-		
-		if (this.canIPlay(card)) {
-			// 如果抽回来的牌能打 则让玩家选择保留或打出
-			this.boardcast({
-				to: currentPlayer,
-				event: 'is-replay',
-				data: card
-			})
-			
-			// 返回is-replay-callback事件且类型为noreplay，则选择保留，结束回合（若类型为replay 选择打出,则交由play事件处理）
-			currentPlayer.once('is-replay-callback', (type) => {
-				if (type === 'noreplay') {
-					this.setState({ currentPlayerIndex: this.getNextPlayerIndex() })
-				}
-			})
-			return
-		}
-				
-		this.setState({ currentPlayerIndex: this.getNextPlayerIndex() })
-	}
-	
-	getNextPlayerIndex() {
-		if (this.state.direction === 'cw') {
-			if (this.state.currentPlayerIndex === this.players.length - 1) {
-				return 0
-			} else {
-				return this.state.currentPlayerIndex + 1
-			}
-			return
-		}
-		
-		if (this.state.direction === 'acw') {
-			if (this.state.currentPlayerIndex === 0) {
-				return this.players.length - 1
-			} else {
-				return this.state.currentPlayerIndex - 1
-			}
-			return
-		}
 	}
 	
 	addPass(cards) {
@@ -168,45 +169,6 @@ class BasicGame {
 		return this.passCardPool
 	}
 	
-	play(options) {
-		if (!this.canIPlay(options.card)) {
-			throw new Error('此牌不能出')
-		}
-		
-		if (options.player !== this.players[this.state.currentPlayerIndex]) {
-			throw new Error('还没轮到你出')
-		}
-		
-		const currentPlayer = this.players[this.state.currentPlayerIndex]
-		
-		this.playAction(options)
-		
-		// 将要出的牌从手牌中移除
-		currentPlayer.removeCards(options.card)
-		
-		// 将要出的牌放入已出牌堆
-		this.addPass(options.card)
-		
-		if (currentPlayer.cards.length === 0) {
-			clearInterval(this.gameClock)
-			this.gameEndAction()
-			return
-		}
-		
-		// 如果手牌剩下一张，没有喊uno的话抽2张
-		if (currentPlayer.cards.length === 1 && !currentPlayer.isUno) {
-			// 发送没喊uno广播
-			this.boardcast({
-				to: this.players,
-				event: 'no-uno-draw',
-				data: currentPlayer
-			})
-
-			currentPlayer.addCards(this.deckCards.draw(2))
-		}
-		
-		this.setState({ currentPlayerIndex: this.getNextPlayerIndex() })
-	}
 	
 	canIPlay() {
 		// 父类重写规则
@@ -216,14 +178,6 @@ class BasicGame {
 	playAction() {
 		// 父类重写出牌动作
 		throw new Error('请重写出牌动作')
-	}
-	
-	uno(options) {
-		// 喊uno
-		const currentPlayer = this.players[this.state.currentPlayerIndex]
-		if (options.player === currentPlayer) {
-			currentPlayer.isUno = true
-		}
 	}
 	
 	gameEndAction() {

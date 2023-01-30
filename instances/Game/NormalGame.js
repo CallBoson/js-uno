@@ -2,6 +2,7 @@ import BasicGame from './BasicGame.js'
 import { Card, DeckCards } from '../Card.js'
 import Player from '../Player.js'
 import $Cards from '../../constants/cards.js'
+import Computer from '../Computer/BasicComputer.js'
 
 // 经典模式
 class NormalGame extends BasicGame {
@@ -13,7 +14,13 @@ class NormalGame extends BasicGame {
 			throw new Error('玩家人数不等于4')
 		}
 		const deckCards = new DeckCards({ cards: $Cards.normal }) // 新建普通模式牌堆
-		const players = Array.from(options.users, user => new Player(user)) // 用户转换成玩家
+		const players = Array.from(options.users, user => {
+			if (user.isComputer) {
+				return new Computer(user)
+			} else {
+				return new Player(user)
+			}
+		}) // 用户转换成玩家
 	    super({
 			players,
 			deckCards
@@ -48,6 +55,11 @@ class NormalGame extends BasicGame {
 	playAction(options) {
 		//出牌动作
 		const referCard = this.passCardPool[this.passCardPool.length - 1] //牌堆最后一张牌
+		
+		if ((options.card.symbol === 'W' || options.card.symbol === 'WD') && !options.turnToColor) {
+			throw new Error('请选择转换后颜色')
+		}
+		
 		if (options.card.symbol === 'W') {
 			options.card.color = options.turnToColor
 			return
@@ -56,8 +68,8 @@ class NormalGame extends BasicGame {
 		if (options.card.symbol === 'WD') {
 			options.card.color = options.turnToColor
 			
-			const playSidePlayer = this.players[this.state.currentPlayerIndex] // 打出+4方
-			const doubtSidePlayer = this.players[this.getNextPlayerIndex()] // 质疑方
+			const playSidePlayer = this.state.currentPlayer // 打出+4方
+			const doubtSidePlayer = this.getNextPlayer() // 质疑方
 			
 			if (playSidePlayer.cards.length === 1) {
 				// 若手上只剩一张+4，则不发送质疑事件
@@ -65,16 +77,10 @@ class NormalGame extends BasicGame {
 				return
 			}
 			
-			// 发送是否质疑+4事件
-			this.boardcast({
-				to: doubtSidePlayer,
-				event: 'is-query-wd'
-			})
-			
 			const drawFunc = () => {
 				// 接受加牌
 				doubtSidePlayer.addCards(this.deckCards.draw(4))
-				this.setState({ currentPlayerIndex: this.getNextPlayerIndex() })
+				this.setState({ currentPlayer: this.getNextPlayer() })
 				doubtSidePlayer.removeListener('is-query-wd-doubt', doubtFunc)
 			}
 			
@@ -92,7 +98,7 @@ class NormalGame extends BasicGame {
 					})
 				} else {
 					doubtSidePlayer.addCards(this.deckCards.draw(6))
-					this.setState({ currentPlayerIndex: this.getNextPlayerIndex() })
+					this.setState({ currentPlayer: this.getNextPlayer() })
 					
 					// 质疑失败，与质疑成功同理
 					this.boardcast({
@@ -106,11 +112,17 @@ class NormalGame extends BasicGame {
 			
 			doubtSidePlayer.once('is-query-wd-draw', drawFunc)
 			doubtSidePlayer.once('is-query-wd-doubt', doubtFunc)
+			
+			// 发送是否质疑+4事件
+			this.boardcast({
+				to: doubtSidePlayer,
+				event: 'is-query-wd'
+			})
 			return
 		}
 		
 		if (options.card.symbol === 'S') {
-			this.setState({ currentPlayerIndex: this.getNextPlayerIndex() })
+			this.setState({ currentPlayer: this.getNextPlayer() })
 			return
 		}
 		
@@ -122,9 +134,9 @@ class NormalGame extends BasicGame {
 		}
 		
 		if (options.card.symbol === 'D') {
-			const nextPlayer = this.players[this.getNextPlayerIndex()]
+			const nextPlayer = this.getNextPlayer()
 			nextPlayer.addCards(this.deckCards.draw(2))
-			this.setState({ currentPlayerIndex: this.getNextPlayerIndex() })
+			this.setState({ currentPlayer: this.getNextPlayer() })
 			return
 		}
 	}
