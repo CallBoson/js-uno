@@ -1,7 +1,7 @@
 <template>
 	<view class="container">
 		<!-- <button type="primary" @click="startGame()">重新开始</button> -->
-		<button type="warn">游戏剩余时间：{{ gameSeconds }}秒</button>
+		<button type="warn">{{ rate }}倍场 游戏剩余时间：{{ gameSeconds }}秒</button>
 		<view class="card-pool-wrap">
 			<view class="card" v-for="(card, cardIndex) in passCardPool" :class="card.color" :style="{ left: cardIndex * 30 + 'rpx' }">{{ symbol(card.symbol) }}</view>
 		</view>
@@ -49,6 +49,7 @@
 	export default {
 		data() {
 			return {
+				rate: 0,
 				self_user: {},
 				players: [],
 				current_player: {},
@@ -85,9 +86,9 @@
 		methods: {
 			init() {
 				const user1 = uni.user
-				const user2 = new User({ nickname: 'Computer1', coins: 100 })
-				const user3 = new User({ nickname: '队友', coins: 100 })
-				const user4 = new User({ nickname: 'Computer2', coins: 100 })
+				const user2 = new Computer({ nickname: 'Computer1', coins: 100 })
+				const user3 = new Computer({ nickname: 'Computer2', coins: 100 })
+				const user4 = new Computer({ nickname: 'Computer3', coins: 100 })
 				
 				this.self_user = user1 // 自己
 				
@@ -100,84 +101,77 @@
 					]
 				})
 				
-				game.players.forEach(player => {
-					player.on('players-changed', (players) => {
-						this.players = players
+				this.rate = game.rate
+				
+				const player = game.players.find(player => player.uid === this.self_user.uid)
+				
+				player.on('players-changed', (players) => {
+					this.players = players
+				})
+				
+				player.on('passcardpool-changed', cards => {
+					this.passCardPool = cards
+				})
+				
+				player.on('state-changed', state => {
+					this.current_player = state.currentPlayer
+					this.gameSeconds = state.seconds
+				})
+				
+				
+				player.on('is-replay', (card) => {
+					// 抽回来的牌能打出 询问是否需要打出
+					this.current_select = card
+					this.$refs['replay-popup'].open()
+				})
+				
+				player.on('no-uno-draw', (who) => {
+					// 没有喊uno
+					uni.showToast({
+						icon: 'none',
+						title: `${who.nickname} 没有喊UNO，+2张`
 					})
-					
-					player.on('passcardpool-changed', cards => {
-						this.passCardPool = cards
+				})
+				
+				player.on('is-query-wd-success', () => {
+					// 质疑成功
+					uni.showToast({
+						icon: 'success',
+						title: '质疑成功'
 					})
-					
-					player.on('state-changed', state => {
-						this.current_player = state.currentPlayer
-						this.gameSeconds = state.seconds
+				})
+				
+				player.on('is-query-wd-fail', () => {
+					// 质疑失败
+					uni.showToast({
+						icon: 'error',
+						title: '质疑失败'
 					})
-					
-					
-					player.on('is-replay', (card) => {
-						// 抽回来的牌能打出 询问是否需要打出
-						this.current_select = card
-						this.$refs['replay-popup'].open()
-					})
-					
-					player.on('no-uno-draw', () => {
-						// 没有喊uno
-						console.log(`${player.nickname} 没有喊UNO，+2张`);
-						uni.showToast({
-							icon: 'none',
-							title: '没有喊uno哦~'
-						})
-					})
-					
-					player.on('is-query-wd-success', () => {
-						// 质疑成功
-						uni.showToast({
-							icon: 'success',
-							title: '质疑成功'
-						})
-					})
-					
-					player.on('is-query-wd-fail', () => {
-						// 质疑失败
-						uni.showToast({
-							icon: 'error',
-							title: '质疑失败'
-						})
-					})
-					
-					player.on('is-query-wd', () => {
-						console.log(`${player.nickname} 收到质疑广播`);
-						uni.showModal({
-							content: '对方打出了+4牌，是否接受加牌/质疑',
-							cancelText: '接受加牌',
-							confirmText: '质疑',
-							success: (res) => {
-								if (res.cancel) {
-									// 接受加牌
-									player.emit('is-query-wd-draw')
-								} else {
-									// 质疑
-									player.emit('is-query-wd-doubt')
-								}
+				})
+				
+				player.on('is-query-wd', () => {
+					console.log(`${player.nickname} 收到质疑广播`);
+					uni.showModal({
+						content: '对方打出了+4牌，是否接受加牌/质疑',
+						cancelText: '接受加牌',
+						confirmText: '质疑',
+						success: (res) => {
+							if (res.cancel) {
+								// 接受加牌
+								player.emit('is-query-wd-draw')
+							} else {
+								// 质疑
+								player.emit('is-query-wd-doubt')
 							}
-						})
-					})
-					
-					player.on('game-end', options => {
-						if (options.winner.uid === this.self_user.uid) {
-							uni.showToast({
-								title: '胜利啦！！',
-								icon: 'none'
-							});
-						} else {
-							uni.showToast({
-								title: '失败～',
-								icon: 'none'
-							});
 						}
 					})
-				})	
+				})
+				
+				player.on('game-end', scores => {
+					scores.forEach(playerScore => {
+						console.log(`第${playerScore.rank}名：${playerScore.player.nickname} 手牌分数：${playerScore.score} 金币：${playerScore.coins}`);
+					})
+				})
 			},
 			
 			startGame() {
@@ -191,7 +185,7 @@
 					// 抽牌后再选择打出
 					this.$refs['replay-popup'].close()
 					
-					game.emit('is-replay-callback', 'replay') // 返回保留事件
+					this.current_player.emit('is-replay-callback', 'replay') // 返回保留事件
 					
 					// 抽牌后再选择打出，则自动喊uno，再打出一只
 					if (this.current_player.cards.length === 2) {
@@ -220,7 +214,7 @@
 			},
 			
 			noreplay() {
-				game.emit('is-replay-callback', 'noreplay') // 返回保留事件
+				this.current_player.emit('is-replay-callback', 'noreplay') // 返回保留事件
 				this.$refs['replay-popup'].close()
 			},
 						

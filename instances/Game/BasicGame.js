@@ -12,7 +12,7 @@ class BasicGame {
 	state = {
 		direction: 'cw', // 随机取逆时针/顺时针
 		currentPlayerIndex: 0, // 当前出牌玩家index
-		seconds: 0 // 剩余游戏秒数
+		seconds: 0 ,// 剩余游戏秒数
 	}
 	
 	constructor(options) {
@@ -197,8 +197,9 @@ class BasicGame {
 		if (currentPlayer.cards.length === 1 && !currentPlayer.isUno) {
 			// 发送没喊uno广播
 			this.boardcast({
-				to: currentPlayer,
-				event: 'no-uno-draw'
+				to: this.players,
+				event: 'no-uno-draw',
+				data: currentPlayer
 			})
 
 			currentPlayer.addCards(this.deckCards.draw(2))

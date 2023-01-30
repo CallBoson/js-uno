@@ -5,6 +5,9 @@ import $Cards from '../../constants/cards.js'
 
 // 经典模式
 class NormalGame extends BasicGame {
+	rate = 200 // 倍率
+	mode = 'single' // single / couple 单人模式/双人模式
+	
 	constructor(options) {
 		if (options.users.length !== 4) {
 			throw new Error('玩家人数不等于4')
@@ -20,7 +23,7 @@ class NormalGame extends BasicGame {
 	start() {
 		super.start({
 			initCardCount: 6,
-			seconds: 180
+			seconds: 180,
 		})
 	}
 	
@@ -127,18 +130,58 @@ class NormalGame extends BasicGame {
 	}
 	
 	gameEndAction() {
-		const hasPlayerFinish = this.players.find(player => player.cards.length === 0)
+		// 计算手牌分数
+		const getScore = (card) => {
+			// 获取该手牌分数
+			if (card.color === 'any') {
+				return 50 // 万能牌+50
+			} else if (card.symbol === 'D' || card.symbol === 'S' || card.symbol === 'R') {
+				return 20 // 功能牌+20
+			} else {
+				return Number(card.symbol) // 数字牌+牌面分
+			}
+		}
 		
-		if (hasPlayerFinish) {
-			// 有玩家的手牌已经出完
-			hasPlayerFinish.changeCoins(3000)
+		if (this.mode === 'single') {
+			const scores = []
+			
+			this.players.forEach(player => {
+				const playerScore = player.cards.reduce((totalScore, currentCard) => totalScore + getScore(currentCard), 0) // 手牌分数累加
+				scores.push({
+					player,
+					score: -playerScore,
+				})
+			})
+			
+			scores.sort((a, b) => a.score - b.score) // 从小到大排列
+			
+			let totalCoins = (Math.abs(scores[0].score) + Math.abs(scores[1].score)) * this.rate // 总赢金币数
+			scores.forEach((current, currentIndex) => {
+				const rank = 4 - currentIndex // 排名
+				let coins
+				if (rank === 4 || rank === 3) {
+					coins = current.score * this.rate // 排名第三或第四，则输 手牌分*倍率
+				} else if (rank === 2) {
+					coins = Math.floor(totalCoins * 0.25) // 排名第二，分得25%
+					totalCoins -= coins
+				} else {
+					coins = totalCoins // 排名第一，则获取剩余所有金币
+				}
+				
+				// 增减金币
+				current.player.changeCoins(coins)
+				
+				Object.assign(scores[currentIndex], {
+					rank,
+					coins
+				})
+			})
+			
 			this.boardcast({
 				to: this.players,
-				event: 'game-end'
+				event: 'game-end',
+				data: scores
 			})
-		} else {
-			// 倒计时结束
-			console.log('倒计时结束');
 		}
 	}
 }
