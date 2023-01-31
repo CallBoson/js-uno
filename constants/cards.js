@@ -124,6 +124,18 @@ const cards = {
 		{ color: 'any', symbol: 'WD' },
 		{ color: 'any', symbol: 'WD' },
 		{ color: 'any', symbol: 'WD' },
+	],
+	
+	test: [
+		{ color: 'any', symbol: 'WD' },
+		{ color: 'any', symbol: 'WD' },
+		{ color: 'any', symbol: 'WD' },
+		{ color: 'any', symbol: 'WD' },
+		{ color: 'any', symbol: 'WD' },
+		{ color: 'red', symbol: '0' },
+		{ color: 'any', symbol: 'WD' },
+		{ color: 'any', symbol: 'WD' },
+		{ color: 'green', symbol: '0' },
 	]
 }
 

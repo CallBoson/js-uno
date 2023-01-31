@@ -28,10 +28,7 @@ class NormalGame extends BasicGame {
 	}
 	
 	start() {
-		super.start({
-			initCardCount: 6,
-			seconds: 180,
-		})
+		super.start()
 	}
 	
 	canIPlay(card) {
@@ -54,91 +51,102 @@ class NormalGame extends BasicGame {
 	
 	playAction(options) {
 		//出牌动作
-		const referCard = this.passCardPool[this.passCardPool.length - 1] //牌堆最后一张牌
-		
-		if ((options.card.symbol === 'W' || options.card.symbol === 'WD') && !options.turnToColor) {
-			throw new Error('请选择转换后颜色')
-		}
-		
-		if (options.card.symbol === 'W') {
-			options.card.color = options.turnToColor
-			return
-		}
-		
-		if (options.card.symbol === 'WD') {
-			options.card.color = options.turnToColor
+		return new Promise((resolve, reject) => {
+			const referCard = this.passCardPool[this.passCardPool.length - 1] //牌堆最后一张牌
 			
-			const playSidePlayer = this.state.currentPlayer // 打出+4方
-			const doubtSidePlayer = this.getNextPlayer() // 质疑方
-			
-			if (playSidePlayer.cards.length === 1) {
-				// 若手上只剩一张+4，则不发送质疑事件
-				doubtSidePlayer.addCards(this.deckCards.draw(4))
-				return
+			if ((options.card.symbol === 'W' || options.card.symbol === 'WD') && !options.turnToColor) {
+				return reject('请选择转换后颜色')
 			}
 			
-			const drawFunc = () => {
-				// 接受加牌
-				doubtSidePlayer.addCards(this.deckCards.draw(4))
+			if (options.card.symbol === 'W') {
+				options.card.color = options.turnToColor
+				return resolve()
+			}
+			
+			if (options.card.symbol === 'S') {
 				this.setState({ currentPlayer: this.getNextPlayer() })
-				doubtSidePlayer.removeListener('is-query-wd-doubt', doubtFunc)
+				return resolve()
 			}
 			
-			const doubtFunc = () => {
-				// 质疑
-				// 质疑则判断打出+4的玩家有没有与牌堆最后一只相同颜色的手牌，有则质疑成功（打出+4方加6只），否则失败（质疑方加6只）
-				if (playSidePlayer.cards.some(card => card.color === referCard.color)) {
-					playSidePlayer.addCards(this.deckCards.draw(4))
-					
-					// 若质疑成功，向全部玩家通知
-					this.boardcast({
-						to: this.players,
-						event: 'is-query-wd-success',
-						data: doubtSidePlayer
-					})
-				} else {
-					doubtSidePlayer.addCards(this.deckCards.draw(6))
-					this.setState({ currentPlayer: this.getNextPlayer() })
-					
-					// 质疑失败，与质疑成功同理
-					this.boardcast({
-						to: this.players,
-						event: 'is-query-wd-fail',
-						data: doubtSidePlayer
-					})
+			if (options.card.symbol === 'R') {
+				this.setState({
+					direction: this.state.direction === 'cw' ? 'acw' : 'cw'
+				})
+				return resolve()
+			}
+			
+			if (options.card.symbol === 'D') {
+				const nextPlayer = this.getNextPlayer()
+				nextPlayer.addCards(this.deckCards.draw(2))
+				this.setState({ currentPlayer: this.getNextPlayer() })
+				return resolve()
+			}
+			
+			if (options.card.symbol === 'WD') {
+				options.card.color = options.turnToColor
+								
+				const playSidePlayer = this.state.currentPlayer // 打出+4方
+				const doubtSidePlayer = this.getNextPlayer() // 质疑方
+				
+				if (playSidePlayer.cards.length === 1) {
+					// 若手上只剩一张+4，则不发送质疑事件
+					doubtSidePlayer.addCards(this.deckCards.draw(4))
+					return resolve()
 				}
-				doubtSidePlayer.removeListener('is-query-wd-draw', drawFunc)
+				
+				const drawFunc = () => {
+					// 接受加牌
+					doubtSidePlayer.addCards(this.deckCards.draw(4))
+					this.setState({ currentPlayer: this.getNextPlayer() })
+					doubtSidePlayer.removeListener('is-query-wd-doubt', doubtFunc)
+					return resolve()
+				}
+				
+				const doubtFunc = () => {
+					// 质疑
+					// 质疑则判断打出+4的玩家有没有与牌堆最后一只相同颜色的手牌，有则质疑成功（打出+4方加6只），否则失败（质疑方加6只）
+					if (playSidePlayer.cards.some(card => card.color === referCard.color)) {
+						playSidePlayer.addCards(this.deckCards.draw(4))
+						
+						// 若质疑成功，向全部玩家通知
+						this.boardcast({
+							to: this.players,
+							event: 'is-query-wd-success',
+							data: doubtSidePlayer
+						})
+					} else {
+						doubtSidePlayer.addCards(this.deckCards.draw(6))
+						this.setState({ currentPlayer: this.getNextPlayer() })
+						
+						// 质疑失败，与质疑成功同理
+						this.boardcast({
+							to: this.players,
+							event: 'is-query-wd-fail',
+							data: doubtSidePlayer
+						})
+					}
+					doubtSidePlayer.removeListener('is-query-wd-draw', drawFunc)
+					return resolve()
+				}
+				
+				doubtSidePlayer.once('is-query-wd-draw', drawFunc)
+				doubtSidePlayer.once('is-query-wd-doubt', doubtFunc)
+				
+				// 发送是否质疑+4事件
+				this.boardcast({
+					to: doubtSidePlayer,
+					event: 'is-query-wd',
+					data: (isDoubt) => {
+						if (isDoubt)
+					}
+				})
 			}
 			
-			doubtSidePlayer.once('is-query-wd-draw', drawFunc)
-			doubtSidePlayer.once('is-query-wd-doubt', doubtFunc)
+			if (options.card.color === referCard.color || options.card.symbol === referCard.symbol) {
+				return resolve()
+			}
 			
-			// 发送是否质疑+4事件
-			this.boardcast({
-				to: doubtSidePlayer,
-				event: 'is-query-wd'
-			})
-			return
-		}
-		
-		if (options.card.symbol === 'S') {
-			this.setState({ currentPlayer: this.getNextPlayer() })
-			return
-		}
-		
-		if (options.card.symbol === 'R') {
-			this.setState({
-				direction: this.state.direction === 'cw' ? 'acw' : 'cw'
-			})
-			return
-		}
-		
-		if (options.card.symbol === 'D') {
-			const nextPlayer = this.getNextPlayer()
-			nextPlayer.addCards(this.deckCards.draw(2))
-			this.setState({ currentPlayer: this.getNextPlayer() })
-			return
-		}
+		})
 	}
 	
 	gameEndAction() {

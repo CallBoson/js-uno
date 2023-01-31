@@ -18,32 +18,32 @@ function shuffle(arr) {
     return arr;
 }
 
-let cardPool = [] // 剩余牌堆
+let cardPool = [] // 牌堆
 let cardPin = 0 // 牌堆游标
 
 // 一副牌(deck of cards)
 export class DeckCards {
+	cards = undefined
 	constructor(options) {
-		cardPool = Array.from(options.cards, card => new Card(card))
+		this.cards = options.cards
 		
 		// 洗牌
-		shuffle(cardPool)
+		shuffle(this.createCardPool())
 	}
 	
 	// 抽牌
 	draw(count = 1) {
 		const drawOne = () => {
 			// 抽一张
-			// 判断游标(cardPin)是否在最后，若是 即牌堆为空，洗牌；若否 则获取一张牌，游标+1
-			if (cardPin > cardPool.length - 1) {
-				shuffle(cardPool)
+			// 判断游标(cardPin)是否在最后，若是 即牌堆为空，新建一副牌并洗牌；若否 则获取一张牌，游标+1
+			if (cardPin === cardPool.length) {
+				shuffle(this.createCardPool())
 				cardPin = 0
-				drawOne()
-			} else {
-				const card = cardPool[cardPin]
-				cardPin ++
-				return card
 			}
+			
+			const card = cardPool[cardPin]
+			cardPin ++
+			return card
 		}
 		
 		const cardArr = []
@@ -51,5 +51,11 @@ export class DeckCards {
 			cardArr.push(drawOne())
 		}
 		return cardArr
+	}
+	
+	createCardPool() {
+		// 新建一副牌
+		cardPool = Array.from(this.cards, card => new Card(card))
+		return cardPool
 	}
 }

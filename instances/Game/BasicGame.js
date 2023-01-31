@@ -64,6 +64,8 @@ class BasicGame {
 			to: this.state.currentPlayer,
 			event: 'your-round'
 		})
+		
+		console.log(`系统：当前出牌玩家 ${this.state.currentPlayer.nickname}`);
 	}
 	
 	getNextPlayer() {
@@ -105,10 +107,11 @@ class BasicGame {
 		})
 		
 		// 开局随机抽一张牌并放入已出牌堆
-		let [randomCard] = this.deckCards.draw()
-		while (randomCard.color === 'any') {
+		let randomCard
+		do {
 			randomCard = this.deckCards.draw()[0]
-		}
+		} while (randomCard.color === 'any')
+
 		this.addPass(randomCard)
 		
 		// 游戏开始计时间

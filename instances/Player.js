@@ -66,6 +66,11 @@ class Player extends User {
 	}
 	
 	play(options) {
+		if (!this.cards.includes(options.card)) {
+			throw new Error('请选择要出的牌')
+			return
+		}
+		
 		if (!this.game.canIPlay(options.card)) {
 			throw new Error('必须要同颜色或同牌型才能出')
 			return
@@ -76,39 +81,40 @@ class Player extends User {
 			return
 		}
 		
-		this.game.playAction(options)
-		
-		// 将要出的牌从手牌中移除
-		this.removeCards(options.card)
-		
-		// 将要出的牌放入已出牌堆
-		this.game.addPass(options.card)
-		
-		// 若手牌打完，则清除计时器并执行游戏结束动作
-		if (this.cards.length === 0) {
-			clearInterval(this.game.gameClock)
-			this.game.gameEndAction()
-			return
-		}
-		
-		// 如果手牌剩下一张，没有喊uno的话抽2张
-		if (this.cards.length === 1 && !this.isUno) {
-			// 发送没喊uno广播
-			this.game.boardcast({
-				to: this.game.players,
-				event: 'no-uno-draw',
-				data: this
-			})
-		
-			this.addCards(this.game.deckCards.draw(2))
-		}
-		
-		this.game.nextPlayerRound()
+		this.game.playAction(options).then(() => {
+			// 将要出的牌从手牌中移除
+			this.removeCards(options.card)
+			
+			// 将要出的牌放入已出牌堆
+			this.game.addPass(options.card)
+			
+			// 若手牌打完，则清除计时器并执行游戏结束动作
+			if (this.cards.length === 0) {
+				clearInterval(this.game.gameClock)
+				this.game.gameEndAction()
+				return
+			}
+			
+			// 如果手牌剩下一张，没有喊uno的话抽2张
+			if (this.cards.length === 1 && !this.isUno) {
+				// 发送没喊uno广播
+				this.game.boardcast({
+					to: this.game.players,
+					event: 'no-uno-draw',
+					data: this
+				})
+			
+				this.addCards(this.game.deckCards.draw(2))
+			}
+			
+			this.game.nextPlayerRound()
+		})
 	}
 	
 	draw() {
 		if (this.game.state.currentPlayer !== this) {
 			throw new Error('还没轮到你的回合')
+			return
 		}
 		
 		const [card] = this.game.deckCards.draw()
@@ -136,7 +142,7 @@ class Player extends User {
 	
 	uno() {
 		// 喊uno
-		if (this.game.players[this.game.state.currentPlayerIndex] !== this) {
+		if (this.game.state.currentPlayer !== this) {
 			throw new Error('还没轮到你的回合')
 		}
 		

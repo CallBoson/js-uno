@@ -12,13 +12,13 @@
 				<view @click="selectCard(current_player === player, card)" class="card" :class="[card.color, current_select === card ? 'selected' : '']" v-for="(card, cardIndex) in player.cards">
 					{{ symbol(card.symbol) }}
 				</view>
-				
-				<template v-if="current_player === player">
-					<button type="primary" @click="play()">出牌</button>
-					<button type="primary" @click="draw()">抽牌</button>
-					<button type="primary" @click="uno()">UNO</button>
-				</template>
 			</view>
+		</view>
+		
+		<view style="display: flex;margin-top: 50rpx;">
+			<button type="primary" @click="play()">出牌</button>
+			<button type="primary" @click="draw()">抽牌</button>
+			<button type="primary" @click="uno()">UNO</button>
 		</view>
 		
 		<uni-popup ref="color-popup" type="center" :isMaskClick="false">
