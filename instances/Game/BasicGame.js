@@ -25,10 +25,6 @@ class BasicGame {
 		this.deckCards = options.deckCards
 		this._config.initCardCount = options.initCardCount || 6
 		this._config.gameTime = options.gameTime || 180
-		
-		this.players.forEach(player => {
-			player.setGame(this)
-		})
 	}
 	
 	boardcast(options) {
@@ -54,7 +50,7 @@ class BasicGame {
 		}
 	}
 	
-	nextPlayerRound() {
+	endRound() {
 		// 通知下一家可以出牌
 		this.setState({
 			currentPlayer: this.getNextPlayer()
@@ -68,26 +64,7 @@ class BasicGame {
 		console.log(`系统：当前出牌玩家 ${this.state.currentPlayer.nickname}`);
 	}
 	
-	getNextPlayer() {
-		const currentIndex = this.players.findIndex(player => player === this.state.currentPlayer)
-		if (this.state.direction === 'cw') {
-			if (currentIndex === this.players.length - 1) {
-				return this.players[0]
-			} else {
-				return this.players[currentIndex + 1]
-			}
-			return
-		}
-		
-		if (this.state.direction === 'acw') {
-			if (currentIndex === 0) {
-				return this.players[this.players.length - 1]
-			} else {
-				return this.players[currentIndex - 1]
-			}
-			return
-		}
-	}
+
 	
 	start(options) {
 		// 每人抽n张牌
@@ -128,7 +105,7 @@ class BasicGame {
 			}
 		}, 800)
 		
-		this.nextPlayerRound()
+		this.endRound()
 	}
 	
 	setState(state) {
@@ -172,15 +149,70 @@ class BasicGame {
 		return this.passCardPool
 	}
 	
+	getNextPlayer() {
+		const currentIndex = this.players.findIndex(player => player === this.state.currentPlayer)
+		if (this.state.direction === 'cw') {
+			if (currentIndex === this.players.length - 1) {
+				return this.players[0]
+			} else {
+				return this.players[currentIndex + 1]
+			}
+			return
+		}
+		
+		if (this.state.direction === 'acw') {
+			if (currentIndex === 0) {
+				return this.players[this.players.length - 1]
+			} else {
+				return this.players[currentIndex - 1]
+			}
+			return
+		}
+	}
+	
+	getLastPassPool() {
+		// 返回牌堆最后一张牌
+		return this.passCardPool[this.passCardPool.length - 1] 
+	}
+	
+	skipPlayer() {
+		// 跳过一个玩家
+		this.setState({ currentPlayer: this.getNextPlayer() })
+	}
+	
+	returnDirection() {
+		// 调转方向
+		this.setState({
+			direction: this.state.direction === 'cw' ? 'acw' : 'cw'
+		})
+	}
+	
+	/**
+	 * @param {Object} option
+	 * @property {Player} player
+	 * @property {Number} count 
+	 */
+	drawCardsTo(options) {
+		// 给某玩家+n张牌
+		const cards = this.deckCards.draw(options.count)
+		options.player.addCards(cards)
+		return cards
+	}
+	
 	
 	canIPlay() {
 		// 父类重写规则
 		throw new Error('请重写出牌规则')
 	}
 	
-	playAction() {
-		// 父类重写出牌动作
-		throw new Error('请重写出牌动作')
+	play() {
+		// 父类重写出牌
+		throw new Error('请重写出牌方法')
+	}
+	
+	draw() {
+		// 父类重写抽牌
+		throw new Error('请重写抽牌方法')
 	}
 	
 	gameEndAction() {

@@ -1,25 +1,33 @@
 import Player from '../Player.js'
 
 class BasicComputer extends Player {
+	game = null
+	
 	constructor(options) {
 	    super(options)
-		
+	}
+	
+	setGame(game) {
+		this.game = game
+		this.listen()
+	}
+	
+	listen() {
 		this.on('your-round', () => {
-			console.log(`${this.nickname}：到我的回合了`);
 			setTimeout(() => {
 				if (this.cards.length === 2) {
-					this.uno()
+					this.game.uno({ player: this })
 				}
 				for(let i = 0; i < this.cards.length; i++) {
-					const cardObj = {
-						card: this.cards[i]
-					}
 					if (this.cards[i].symbol === 'W' || this.cards[i].symbol === 'WD') {
-						cardObj['turnToColor'] = 'red'
+						this.cards[i].color = 'red'
 					}
 					
 					try {
-						this.play(cardObj)
+						this.game.play({
+							player: this,
+							card: this.cards[i]
+						})
 						console.log(`${this.nickname}：成功打出`);
 						return
 					} catch (err) {
@@ -28,31 +36,13 @@ class BasicComputer extends Player {
 				}
 				
 				console.log(`${this.nickname}：没有可出的牌，尝试抽牌`);
-				this.draw()
-			}, 2000)
-		})
-		
-		this.on('is-replay', (card) => {
-			// 抽回来的牌能打出 默认打出
-			console.log(`${this.nickname}：抽牌后打出`);
-			this.emit('is-replay-callback', 'replay')
-			
-			// 抽牌后再选择打出，则自动喊uno，再打出一只
-			if (this.cards.length === 2) {
-				this.uno()
-			}
-			
-			if (card.symbol === 'W' || card.symbol === 'WD') {
-				this.play({
-					card,
-					turnToColor: 'red'
-				})
-			} else {
-				this.play({
-					card
-				})
-			}
-			
+				
+				const drawed = this.game.draw({ player: this })
+				if (drawed) {
+					// 抽牌后默认保留
+					drawed.noreplay()
+				}
+			}, 1200)
 		})
 		
 		this.on('no-uno-draw', (who) => {
@@ -60,10 +50,10 @@ class BasicComputer extends Player {
 			console.log(`${this.nickname}：我没有喊uno`);
 		})
 		
-		this.on('is-query-wd', () => {
+		this.on('is-query-wd', (isDoubtFunc) => {
 			console.log(`${this.nickname}：我收到质疑广播 默认质疑他`);
 			setTimeout(() => {
-				this.emit('is-query-wd-doubt')
+				isDoubtFunc(true)
 			}, 1500)
 		})
 	}

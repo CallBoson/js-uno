@@ -23,17 +23,10 @@
 		
 		<uni-popup ref="color-popup" type="center" :isMaskClick="false">
 			<view class="color-select-wrap">
-				<button type="default" @click="playWithColor('red')">red</button>
-				<button type="default" @click="playWithColor('yellow')">yellow</button>
-				<button type="default" @click="playWithColor('blue')">blue</button>
-				<button type="default" @click="playWithColor('green')">green</button>
-			</view>
-		</uni-popup>
-		
-		<uni-popup ref="replay-popup" type="center" :isMaskClick="false">
-			<view class="replay-wrap">
-				<button type="default" @click="noreplay()">保留</button>
-				<button type="default" @click="play({ type: 'replay' })">打出</button>
+				<button type="default" @click="resolveSelectColor('red')">red</button>
+				<button type="default" @click="resolveSelectColor('yellow')">yellow</button>
+				<button type="default" @click="resolveSelectColor('blue')">blue</button>
+				<button type="default" @click="resolveSelectColor('green')">green</button>
 			</view>
 		</uni-popup>
 	</view>
@@ -44,6 +37,7 @@
 	import User from '../../instances/User.js'
 	
 	let game = null
+	let selectedColorPromise = undefined
 	
 	export default {
 		data() {
@@ -104,7 +98,15 @@
 				
 				this.rate = game.rate
 				
-				const player = game.players.find(player => player.uid === this.self_user.uid)
+				let player = null
+				game.players.forEach(p => {
+					if (p.uid === this.self_user.uid) {
+						player = p
+					} else {
+						// 若为电脑，把游戏对象传入
+						p.setGame(game)
+					}	
+				})
 				
 				player.on('players-changed', (players) => {
 					this.players = players
@@ -115,7 +117,6 @@
 				})
 				
 				player.on('your-round', () => {
-					console.log(`${player.nickname}：到我的回合了`);
 				})
 				
 				player.on('state-changed', state => {
@@ -123,12 +124,14 @@
 					this.gameSeconds = state.seconds
 				})
 				
-				
-				player.on('is-replay', (card) => {
-					// 抽回来的牌能打出 询问是否需要打出
-					this.current_select = card
-					this.$refs['replay-popup'].open()
+				player.on('someone-uno', who => {
+					uni.showToast({
+						icon: 'none',
+						title: `${who.nickname} 喊了UNO`
+					})
 				})
+				
+			
 				
 				player.on('no-uno-draw', (who) => {
 					// 没有喊uno
@@ -154,7 +157,7 @@
 					})
 				})
 				
-				player.on('is-query-wd', () => {
+				player.on('is-query-wd', (isDoubtFunc) => {
 					console.log(`${player.nickname} 收到质疑广播`);
 					uni.showModal({
 						content: '对方打出了+4牌，是否接受加牌/质疑',
@@ -163,10 +166,10 @@
 						success: (res) => {
 							if (res.cancel) {
 								// 接受加牌
-								player.emit('is-query-wd-draw')
+								isDoubtFunc(false)
 							} else {
 								// 质疑
-								player.emit('is-query-wd-doubt')
+								isDoubtFunc(true)
 							}
 						}
 					})
@@ -186,50 +189,54 @@
 				
 			},
 			
-			play(options) {
-				if (options?.type === 'replay') {
-					// 抽牌后再选择打出
-					this.$refs['replay-popup'].close()
-					
-					this.current_player.emit('is-replay-callback', 'replay') // 返回保留事件
-					
-					// 抽牌后再选择打出，则自动喊uno，再打出一只
-					if (this.current_player.cards.length === 2) {
-						this.uno()
+			play() {
+				if (this.current_player.uid !== this.self_user.uid) {
+					uni.showToast({
+						icon: 'none',
+						title: '还没轮到你的回合哦'
+					})
+					return
+				}
+				
+				const playFunc = (options) => {
+					try {
+						game.play(options)
+					} catch(err) {
+						uni.showToast({
+							icon: 'none',
+							title: err.toString()
+						})
 					}
 				}
 				
 				if (this.current_select.symbol === 'W' || this.current_select.symbol === 'WD') {
-					this.$refs['color-popup'].open()
+					this.selectColor().then(color => {
+						this.current_select.color = color
+						playFunc({
+							player: this.current_player,
+							card: this.current_select,
+						})
+					})
 					return
 				}
-			
 				
-				try {
-					this.current_player.play({
-						card: this.current_select,
-					})
-				} catch(err) {
-					uni.showToast({
-						icon: 'none',
-						title: err.toString()
-					})
-				}
-				
-				
+				playFunc({
+					player: this.current_player,
+					card: this.current_select,
+				})
 			},
 			
-			noreplay() {
-				this.current_player.emit('is-replay-callback', 'noreplay') // 返回保留事件
-				this.$refs['replay-popup'].close()
+			resolveSelectColor(color) {
+				selectedColorPromise.resolve(color)
+				this.$refs['color-popup'].close()
 			},
 						
-			playWithColor(color) {
-				this.$refs['color-popup'].close()
-				this.current_player.play({
-					card: this.current_select,
-					turnToColor: color
+			selectColor() {
+				this.$refs['color-popup'].open()
+				const promise = new Promise((resolve) => {
+					selectedColorPromise = { resolve }
 				})
+				return promise
 			},
 			
 			selectCard(isSelf, card) {
@@ -241,8 +248,39 @@
 			},
 			
 			draw() {
+				if (this.current_player.uid !== this.self_user.uid) {
+					uni.showToast({
+						icon: 'none',
+						title: '还没轮到你的回合哦'
+					})
+					return
+				}
+				
 				try {
-					this.current_player.draw()
+					const drawed = game.draw({ player: this.current_player })
+					if (drawed) {
+						// 抽回来的牌能打出 询问是否需要打出
+						uni.showModal({
+							content: '是否继续打出',
+							cancelText: '保留',
+							confirmText: '打出',
+							success: (res) => {
+								if (res.cancel) {
+									drawed.noreplay()
+								} else {
+									if (drawed.card.symbol === 'W' || drawed.card.symbol === 'WD') {
+										this.selectColor().then(color => {
+											drawed.card.color = color
+											drawed.replay(drawed.card)
+										})
+										return
+									} else {
+										drawed.replay(drawed.card)
+									}
+								}
+							}
+						})
+					}
 				} catch(err) {
 					uni.showToast({
 						icon: 'none',
@@ -252,11 +290,22 @@
 			},
 			
 			uno() {
-				this.current_player.uno()
-				uni.showToast({
-					icon: 'none',
-					title: 'UNO~~~~~'
-				})
+				if (this.current_player.uid !== this.self_user.uid) {
+					uni.showToast({
+						icon: 'none',
+						title: '还没轮到你的回合哦'
+					})
+					return
+				}
+				
+				try {
+					game.uno({ player: this.current_player })
+				} catch (err) {
+					uni.showToast({
+						icon: 'none',
+						title: err.toString()
+					})
+				}
 			}
 		}
 	}
