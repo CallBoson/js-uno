@@ -141,43 +141,42 @@
 					})
 				})
 				
-				player.on('is-query-wd-success', (player) => {
-					// 质疑成功
+				player.on('is-query-wd-result', (options) => {
+					// 质疑结果
+					const str = options.type === 'success' ? '成功' : '失败'
 					uni.showToast({
 						icon: 'success',
-						title: `${player.nickname}：质疑成功`
+						title: `${options.player.nickname}：质疑${str}`
 					})
 				})
 				
-				player.on('is-query-wd-fail', () => {
-					// 质疑失败
-					uni.showToast({
-						icon: 'error',
-						title: `${player.nickname}：质疑失败`
-					})
-				})
-				
-				player.on('is-query-wd', (isDoubtFunc) => {
+				player.on('is-query-wd', (options) => {
 					console.log(`${player.nickname} 收到质疑广播`);
 					uni.showModal({
-						content: '对方打出了+4牌，是否接受加牌/质疑',
+						content: `${options.player.nickname} 打出了+4牌，是否接受加牌/质疑`,
 						cancelText: '接受加牌',
 						confirmText: '质疑',
 						success: (res) => {
 							if (res.cancel) {
 								// 接受加牌
-								isDoubtFunc(false)
+								options.doubtFunc(false)
 							} else {
 								// 质疑
-								isDoubtFunc(true)
+								options.doubtFunc(true)
 							}
 						}
 					})
 				})
 				
 				player.on('game-end', scores => {
-					scores.forEach(playerScore => {
-						console.log(`第${playerScore.rank}名：${playerScore.player.nickname} 手牌分数：${playerScore.score} 金币：${playerScore.coins}`);
+					let str = ''
+					for(let i = scores.length - 1; i >= 0; i--) {
+						str += `第${scores[i].rank}名：${scores[i].player.nickname} 手牌分数：${scores[i].score} 金币：${scores[i].coins}\n`
+					}
+
+					uni.showModal({
+						showCancel: false,
+						content: str
 					})
 				})
 
@@ -273,7 +272,6 @@
 											drawed.card.color = color
 											drawed.replay(drawed.card)
 										})
-										return
 									} else {
 										drawed.replay(drawed.card)
 									}
@@ -358,6 +356,7 @@
 	
 	.yellow {
 		background-color: yellow;
+		color: #000;
 	}
 	
 	.any {

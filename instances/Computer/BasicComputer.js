@@ -50,10 +50,10 @@ class BasicComputer extends Player {
 			console.log(`${this.nickname}：我没有喊uno`);
 		})
 		
-		this.on('is-query-wd', (isDoubtFunc) => {
-			console.log(`${this.nickname}：我收到质疑广播 默认质疑他`);
+		this.on('is-query-wd', (options) => {
+			console.log(`${this.nickname}：${options.player.nickname}给我打出了+4 默认质疑他`);
 			setTimeout(() => {
-				isDoubtFunc(true)
+				options.doubtFunc(true)
 			}, 1500)
 		})
 	}

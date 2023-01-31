@@ -40,6 +40,9 @@ class NormalGame extends BasicGame {
 	play(options) {
 		const player = options.player
 		const card = options.card
+		
+		let needDoubt = false
+		
 		if (!player.cards.includes(card)) {
 			throw new Error('请选择要出的牌')
 		}
@@ -50,14 +53,6 @@ class NormalGame extends BasicGame {
 		
 		if (player !== this.state.currentPlayer) {
 			throw new Error('还没轮到你的回合')
-		}
-		
-		if (card.symbol === 'W') {
-			// card.color = options.color
-		}
-		
-		if (card.symbol === 'WD') {
-			// card.color = options.color
 		}
 		
 		if (card.symbol === 'S') {
@@ -76,55 +71,74 @@ class NormalGame extends BasicGame {
 			this.skipPlayer()
 		}
 		
-		// if (options.card.symbol === 'WD') {
-		// 	options.card.color = options.turnToColor
-							
-		// 	const playSidePlayer = this.state.currentPlayer // 打出+4方
-		// 	const doubtSidePlayer = this.getNextPlayer() // 质疑方
-			
-		// 	if (playSidePlayer.cards.length === 1) {
-		// 		// 若手上只剩一张+4，则不发送质疑事件
-		// 		doubtSidePlayer.addCards(this.deckCards.draw(4))
-		// 		return resolve()
-		// 	}
-			
-		// 	// 发送是否质疑+4事件
-		// 	this.boardcast({
-		// 		to: doubtSidePlayer,
-		// 		event: 'is-query-wd',
-		// 		data: (isDoubt) => {
-		// 			if (isDoubt) {
-		// 				// 质疑则判断打出+4的玩家有没有与牌堆最后一只相同颜色的手牌，有则质疑成功（打出+4方加6只），否则失败（质疑方加6只）
-		// 				if (playSidePlayer.cards.some(card => card.color === referCard.color)) {
-		// 					playSidePlayer.addCards(this.deckCards.draw(4))
-							
-		// 					// 若质疑成功，向全部玩家通知
-		// 					this.boardcast({
-		// 						to: this.players,
-		// 						event: 'is-query-wd-success',
-		// 						data: doubtSidePlayer
-		// 					})
-		// 				} else {
-		// 					doubtSidePlayer.addCards(this.deckCards.draw(6))
-		// 					this.setState({ currentPlayer: this.getNextPlayer() })
-							
-		// 					// 质疑失败，与质疑成功同理
-		// 					this.boardcast({
-		// 						to: this.players,
-		// 						event: 'is-query-wd-fail',
-		// 						data: doubtSidePlayer
-		// 					})
-		// 				}
-		// 				return resolve()
-		// 			} else {
-		// 				// 接受加牌
-		// 				doubtSidePlayer.addCards(this.deckCards.draw(4))
-		// 				this.setState({ currentPlayer: this.getNextPlayer() })
-		// 				return resolve()
-		// 			}
-		// 		}
-		// 	})
-		// }
+		if (card.symbol === 'WD') {
+			const playSidePlayer = this.state.currentPlayer // 打出+4方
+			const doubtSidePlayer = this.getNextPlayer() // 质疑方
+
+			if (playSidePlayer.cards.length === 1) {
+				// 若手上只剩一张+4，则不发送质疑事件
+				this.drawCardsTo({
+					player: doubtSidePlayer,
+					count: 4
+				})
+			} else {
+				needDoubt = true
+				const lastPassCard = this.getLastPassPool()
+				// 发送是否质疑+4事件
+				this.boardcast({
+					to: doubtSidePlayer,
+					event: 'is-query-wd',
+					data: {
+						player: playSidePlayer,
+						doubtFunc: (isDoubt) => {
+							if (isDoubt) {
+								// 质疑则判断打出+4的玩家有没有与牌堆最后一只相同颜色的手牌，有则质疑成功（打出+4方加6只），否则失败（质疑方加6只)
+								if (playSidePlayer.cards.some(c => c.color === lastPassCard.color)) {
+									this.drawCardsTo({
+										player: playSidePlayer,
+										count: 4
+									})
+									
+									// 若质疑成功，向全部玩家通知
+									this.boardcast({
+										to: this.players,
+										event: 'is-query-wd-result',
+										data: {
+											type: 'success',
+											player: doubtSidePlayer
+										}
+									})
+									
+									this.endRound()
+								} else {
+									this.drawCardsTo({
+										player: doubtSidePlayer,
+										count: 6
+									})
+									this.skipPlayer()
+									this.endRound()
+									
+									// 质疑失败，与质疑成功同理
+									this.boardcast({
+										to: this.players,
+										event: 'is-query-wd-result',
+										data: {
+											type: 'fail',
+											player: doubtSidePlayer
+										}
+									})
+								}
+							} else {
+								// 接受加牌
+								doubtSidePlayer.addCards(this.deckCards.draw(4))
+								this.skipPlayer()
+								this.endRound()
+							}
+						}
+					}
+				})
+			}
+		}
 		
 		// 将要出的牌从手牌中移除
 		player.removeCards(card)
@@ -154,8 +168,10 @@ class NormalGame extends BasicGame {
 			})
 		}
 		
-		this.endRound()
-		
+		if (!needDoubt) {
+			// 若是质疑牌 则不结束回合
+			this.endRound()
+		}
 	}
 	
 	/**
@@ -182,7 +198,11 @@ class NormalGame extends BasicGame {
 				},
 				replay: (replayCard) => {
 					// 抽回来的牌再打出自动喊uno
-					this.uno()
+					try {
+						this.uno({ player })
+					} catch(err) {
+						throw err
+					}
 					
 					this.play({
 						player,
@@ -204,10 +224,6 @@ class NormalGame extends BasicGame {
 		const player = options.player
 		if (player !== this.state.currentPlayer) {
 			throw new Error('还没轮到你的回合')
-		}
-		
-		if (player.cards.length > 2) {
-			throw new Error('至少要有一张牌打出后手牌剩1只才可以喊UNO')
 		}
 		
 		player.isUno = true
