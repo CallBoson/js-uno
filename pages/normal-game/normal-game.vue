@@ -1,24 +1,36 @@
 <template>
 	<view class="container">
 		<!-- <button type="primary" @click="startGame()">重新开始</button> -->
-		<button type="warn">{{ rate }}倍场 游戏剩余时间：{{ gameSeconds }}秒</button>
+		<view class="game-state-wrap">
+			<view class="rate">{{ rate }}倍场</view>
+			<view class="seconds">{{ gameSeconds }}</view>
+		</view>
+		<image class="arrow-image" :class="direction === 'cw' ? 'arrow-cw' : 'arrow-acw'" src="../../static/images/arrow.png" mode="aspectFit"></image>
 		<view class="card-pool-wrap">
-			<view class="card" v-for="(card, cardIndex) in passCardPool" :class="card.color" :style="{ left: cardIndex * 30 + 'rpx' }">{{ symbol(card.symbol) }}</view>
+			<view class="card" v-for="(card, cardIndex) in passCardPool" :class="card.color">{{ symbol(card.symbol) }}</view>
 		</view>
 		
-		<view style="margin-top: 200rpx;">
-			<view v-for="(player, playerIndex) in players" style="display: flex;margin-bottom: 20rpx;align-items: center;" :class="current_player === player ? 'current-user' : ''">
-				<view>{{ player.nickname }}{{ player.uid === self_user.uid ? '(自己)' : '' }}：</view>
-				<view @click="selectCard(current_player === player, card)" class="card" :class="[card.color, current_select === card ? 'selected' : '']" v-for="(card, cardIndex) in player.cards">
-					{{ symbol(card.symbol) }}
+		<view class="players-wrap">
+			<view v-for="(player, playerIndex) in players" class="player" :class="current_player === player ? 'current-user' : ''">
+				<view class="info-wrap">{{ player.nickname }}</view>
+				<view class="cards-wrap">
+					<template v-if="player.uid === self_user.uid">
+						<view @click="selectCard(current_player === player, card)" class="card" :class="[card.color, current_select === card ? 'selected' : '']" v-for="(card, cardIndex) in player.cards">
+							{{ symbol(card.symbol) }}
+						</view>
+					</template>
+					
+					<template v-else>
+						<view class="back-card" v-for="(card, cardIndex) in player.cards"></view>
+					</template>
 				</view>
 			</view>
 		</view>
 		
-		<view style="display: flex;margin-top: 50rpx;">
-			<button type="primary" @click="play()">出牌</button>
-			<button type="primary" @click="draw()">抽牌</button>
-			<button type="primary" @click="uno()">UNO</button>
+		<view class="btns-wrap">
+			<button type="warn" @click="play()">出牌</button>
+			<button type="warn" @click="draw()">抽牌</button>
+			<button type="warn" @click="uno()">UNO</button>
 		</view>
 		
 		<uni-popup ref="color-popup" type="center" :isMaskClick="false">
@@ -122,6 +134,7 @@
 				player.on('state-changed', state => {
 					this.current_player = state.currentPlayer
 					this.gameSeconds = state.seconds
+					this.direction = state.direction
 				})
 				
 				player.on('someone-uno', who => {
@@ -145,7 +158,7 @@
 					// 质疑结果
 					const str = options.type === 'success' ? '成功' : '失败'
 					uni.showToast({
-						icon: 'success',
+						icon: options.type === 'success' ? 'success' : 'error',
 						title: `${options.player.nickname}：质疑${str}`
 					})
 				})
@@ -310,53 +323,250 @@
 </script>
 
 <style lang="scss" scoped>
+	page {
+		background-color: rgb(17,129,238);
+	}
+	
+	.container {
+		position: relative;
+		height: 100vh;
+		box-sizing: border-box;
+		overflow: hidden;
+	}
+	
+	.game-state-wrap {
+		position: absolute;
+		right: 80rpx;
+		top: 50rpx;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		.rate {
+			color: rgb(231,208,4);
+			font-size: 50rpx;
+		}
+		
+		.seconds {
+			width: 150rpx;
+			height: 150rpx;
+			border-radius: 50%;
+			border: 10rpx solid rgba(255,255,255,.8);
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			font-size: 60rpx;
+			font-weight: bold;
+			color: rgb(231,208,4);
+		}
+	}
+	
+	.arrow-image {
+		position: absolute;
+		width: 800rpx;
+		height: 800rpx;
+		left: 50%;
+		top: 50%;
+		opacity: .5;
+	}
+	
+	.arrow-cw {
+		animation: rotatecw 5s infinite linear;
+		
+		@keyframes rotatecw {
+			from {
+				transform: translate(-50%, -50%) rotate(0deg) scaleX(-1);
+			}
+			to {
+				transform: translate(-50%, -50%) rotate(360deg) scaleX(-1);
+			}
+		}
+	}
+	
+	.arrow-acw {
+		animation: rotateacw 5s infinite linear;
+		
+		@keyframes rotateacw {
+			from {
+				transform: translate(-50%, -50%) rotate(360deg);
+			}
+			to {
+				transform: translate(-50%, -50%) rotate(0deg);
+			}
+		}
+	}
+	
+	.btns-wrap {
+		position: absolute;
+		display: flex;
+		flex-direction: column;
+		right: 100rpx;
+		bottom: 50rpx;
+		display: flex;
+		button {
+			margin-bottom: 10rpx;
+		}
+	}
+	
+	.players-wrap {
+		position: relative;
+		height: 100%;
+		.player {
+			position: absolute;
+			display: flex;
+			align-items: center;
+			
+			&:nth-child(1) {
+				left: 50%;
+				bottom: 0;
+				transform: translateX(-50%);
+			}
+			
+			&:nth-child(2) {
+				left: 0;
+				top: 50%;
+				transform: translateY(-50%);
+			}
+			
+			&:nth-child(3) {
+				left: 50%;
+				top: 0;
+				transform: translateX(-50%);
+			}
+			
+			&:nth-child(4) {
+				right: 0;
+				top: 50%;
+				transform: translateY(-50%);
+			}
+			
+			&:nth-child(2), &:nth-child(3), &:nth-child(4) {
+				.cards-wrap {
+					// transform: rotateY(70deg);
+				}
+			}
+			
+			.info-wrap {
+				width: 230rpx;
+				height: 230rpx;
+				box-sizing: border-box;
+				border-radius: 25rpx;
+				font-size: 36rpx;
+				padding: 10rpx;
+				background-color: skyblue;
+				word-break: break-all;
+			}
+			
+			.cards-wrap {
+				display: flex;
+				margin-left: 30rpx;
+				
+				.back-card {
+					position: relative;
+					width: 100rpx;
+					height: 150rpx;
+					box-sizing: border-box;
+					background-color: rgba(255, 255, 255, .8);
+					border: 5rpx solid;
+					border-radius: 15rpx;
+					@for $i from 1 through 500 {
+						&:nth-child(#{$i}) {
+							left: -#{($i - 1) * 60}rpx;
+						}
+					}
+				}
+				.card {
+					position: relative;
+					width: 200rpx;
+					height: 300rpx;
+					color: #FFF;
+					display: flex;
+					justify-content: center;
+					align-items: center;
+					font-size: 100rpx;
+					font-weight: bold;
+					margin-right: 30rpx;
+					border: 10rpx solid #fff;
+					border-radius: 25rpx;
+					box-shadow: 0rpx 0rpx 15rpx rgba(0,0,0,.5);
+					transition: all .3s;
+					box-sizing: border-box;
+				}
+				
+				@for $i from 1 through 500 {
+					.card:nth-child(#{$i}) {
+						left: -#{($i - 1) * 100}rpx;
+					}
+				}
+			}
+		}
+	}
 	.current-user {
-		background-color: rgba(0,0,0,.3);
+		.info-wrap {
+			animation: shine .8s infinite linear alternate;
+		}
+		
+		@keyframes shine {
+			from {
+				box-shadow: 0 0 0 30rpx rgba(231,208,4,0);
+			}
+			to {
+				box-shadow: 0 0 0 30rpx rgba(231,208,4,1);
+			}
+		}
 	}
 	
 	.selected {
-		border: 10rpx solid purple !important;
-		box-sizing: border-box;
+		transform: translateY(-50rpx);
 	}
 	
 	.card-pool-wrap {
-		position: relative;
+		position: absolute;
+		left: 50%;
+		top: 50%;
 		
 		.card {
 			position: absolute;
 			left: 0;
+			width: 200rpx;
+			height: 300rpx;
+			color: #FFF;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			font-size: 120rpx;
+			font-weight: bold;
+			margin-right: 30rpx;
+			border: 10rpx solid #fff;
+			border-radius: 25rpx;
+			box-shadow: 0rpx 0rpx 15rpx rgba(0,0,0,.5);
+			filter: brightness(80%);
 			
+			&:last-child {
+				filter: brightness(100%);
+			}
+		}
+		
+		@for $i from 1 through 500 {
+			.card:nth-child(#{$i}) {
+				transform: translate(-50%, -50%) rotateX(35deg) rotateZ(#{random(90) - 45}deg);
+			}
 		}
 	}
 	
-	.card {
-		width: 100rpx;
-		height: 150rpx;
-		color: #FFF;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		font-size: 60rpx;
-		font-weight: bold;
-		margin-right: 30rpx;
-		border: 1rpx solid #000;
-	}
-	
 	.green {
-		background-color: green;
+		background-color: rgb(48,139,15);
 	}
 	
 	.red {
-		background-color: red;
+		background-color: rgb(195,11,0);
 	}
 	
 	.blue {
-		background-color: blue;
+		background-color: rgb(4,74,166);
 	}
 	
 	.yellow {
-		background-color: yellow;
-		color: #000;
+		background-color: rgb(231,208,4);
 	}
 	
 	.any {

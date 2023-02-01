@@ -115,7 +115,8 @@ class BasicGame {
 			event: 'state-changed',
 			data: {
 				currentPlayer: result.currentPlayer,
-				seconds: this.state.seconds
+				seconds: this.state.seconds,
+				direction: this.state.direction
 			}
 		})
 		return result
