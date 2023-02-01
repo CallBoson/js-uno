@@ -56,9 +56,20 @@ class BasicGame {
 			currentPlayer: this.getNextPlayer()
 		})
 		
+		// 带可以出的牌
+		const adviceCards = []
+		this.state.currentPlayer.cards.forEach(c => {
+			if (this.canIPlay(c)) {
+				adviceCards.push(c)
+			}
+		})
+		
 		this.boardcast({
 			to: this.state.currentPlayer,
-			event: 'your-round'
+			event: 'your-round',
+			data: {
+				adviceCards
+			}
 		})
 		
 		console.log(`系统：当前出牌玩家 ${this.state.currentPlayer.nickname}`);

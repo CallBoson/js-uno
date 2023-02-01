@@ -1,4 +1,5 @@
 import Player from '../Player.js'
+import { getRandomNumber } from '../../utils/common.js'
 
 class BasicComputer extends Player {
 	game = null
@@ -12,48 +13,74 @@ class BasicComputer extends Player {
 		this.listen()
 	}
 	
+	transformCard(card) {
+		// 判断卡牌是不是万能牌 若是，变颜色，最后返回卡牌
+		if (card.symbol === 'W' || card.symbol === 'WD') {
+			const colors = ['red', 'yellow', 'blue', 'green']
+			const index = getRandomNumber(0, colors.length - 1)
+			card.color = colors[index]
+		}
+		return card
+	}
+	
 	listen() {
 		this.on('your-round', () => {
 			setTimeout(() => {
-				if (this.cards.length === 2) {
-					this.game.uno({ player: this })
+				const doUno = () => {
+					if (this.cards.length === 2) {
+						if (getRandomNumber(1, 10) <= 8) {
+							// 有2成机会不喊uno
+							this.game.uno({ player: this })
+						}	
+					}
 				}
-				for(let i = 0; i < this.cards.length; i++) {
-					if (this.cards[i].symbol === 'W' || this.cards[i].symbol === 'WD') {
-						this.cards[i].color = 'red'
-					}
-					
-					try {
-						this.game.play({
-							player: this,
-							card: this.cards[i]
-						})
-						console.log(`${this.nickname}：成功打出`);
-						return
-					} catch (err) {
-						continue
-					}
+
+				// 先判断是否有数字牌
+				const normalCard = this.cards.find(c => c.symbol !== 'W' && c.symbol !== 'WD' && this.game.canIPlay(c))
+				if (normalCard) {
+					doUno()
+					this.game.play({
+						player: this,
+						card: normalCard
+					})
+					console.log(`${this.nickname}：成功打出`);
+					return
+				}
+				
+				// 再判断是否有万能牌
+				const anyCard = this.cards.find(c => c.symbol === 'W' || c.symbol === 'WD')
+				if (anyCard) {
+					doUno()
+					this.game.play({
+						player: this,
+						card: this.transformCard(anyCard)
+					})
+					console.log(`${this.nickname}：成功打出`);
+					return
 				}
 				
 				console.log(`${this.nickname}：没有可出的牌，尝试抽牌`);
 				
 				const drawed = this.game.draw({ player: this })
 				if (drawed) {
-					// 抽牌后默认保留
-					drawed.noreplay()
+					// 抽牌后默认打出
+					const card = this.transformCard(drawed.card)
+					drawed.replay(card)
 				}
 			}, 1200)
 		})
 		
-		this.on('no-uno-draw', (who) => {
-			// 没有喊uno
-			console.log(`${this.nickname}：我没有喊uno`);
-		})
-		
 		this.on('is-query-wd', (options) => {
-			console.log(`${this.nickname}：${options.player.nickname}给我打出了+4 默认质疑他`);
+			// 随机质疑或不质疑
+			const threshold = getRandomNumber(1,2)
+			let isDoubt = false
+			if (threshold === 1) {
+				isDoubt = true
+			}
+			
 			setTimeout(() => {
-				options.doubtFunc(true)
+				options.doubtFunc(isDoubt)
+				console.log(`${this.nickname}：${options.player.nickname}给我打出了+4`);
 			}, 1500)
 		})
 	}

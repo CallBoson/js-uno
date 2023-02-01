@@ -1,6 +1,6 @@
 <template>
 	<view class="container">
-		<!-- <button type="primary" @click="startGame()">重新开始</button> -->
+		<bg></bg>
 		<view class="game-state-wrap">
 			<view class="rate">{{ rate }}倍场</view>
 			<view class="seconds">{{ gameSeconds }}</view>
@@ -13,17 +13,23 @@
 		<view class="players-wrap">
 			<view v-for="(player, playerIndex) in players" class="player" :class="current_player === player ? 'current-user' : ''">
 				<view class="info-wrap">{{ player.nickname }}</view>
-				<view class="cards-wrap">
-					<template v-if="player.uid === self_user.uid">
-						<view @click="selectCard(current_player === player, card)" class="card" :class="[card.color, current_select === card ? 'selected' : '']" v-for="(card, cardIndex) in player.cards">
+				<template v-if="player.uid === self_user.uid">
+					<view class="cards-wrap">
+						<view @click="selectCard(current_player === player, card)" 
+								class="card" :class="[card.color, current_select === card ? 'selected' : '', adviceCards.includes(card) && current_player.uid === self_user.uid ? 'advice' : '']" 
+								v-for="(card, cardIndex) in player.cards"
+								:style="{ left: `${player.cards.length < 9 ? cardIndex * 140 : (cardIndex * 1300 / player.cards.length)}rpx` }">
 							{{ symbol(card.symbol) }}
 						</view>
-					</template>
-					
-					<template v-else>
-						<view class="back-card" v-for="(card, cardIndex) in player.cards"></view>
-					</template>
-				</view>
+					</view>
+				</template>
+				
+				<template v-else>
+					<view class="back-cards-wrap">
+						<view class="back-card"></view>
+						<view class="count">x{{ player.cards.length }}</view>
+					</view>
+				</template>
 			</view>
 		</view>
 		
@@ -45,6 +51,7 @@
 </template>
 
 <script>
+	import bg from '../../components/background/background.vue'
 	import Game from '../../instances/Game/NormalGame.js'
 	import User from '../../instances/User.js'
 	
@@ -52,6 +59,9 @@
 	let selectedColorPromise = undefined
 	
 	export default {
+		components: {
+			bg
+		},
 		data() {
 			return {
 				rate: 0,
@@ -60,7 +70,8 @@
 				current_player: {},
 				current_select: {},
 				passCardPool: [],
-				gameSeconds: 0
+				gameSeconds: 0,
+				adviceCards: []
 			}
 		},
 		onLoad() {
@@ -128,7 +139,8 @@
 					this.passCardPool = cards
 				})
 				
-				player.on('your-round', () => {
+				player.on('your-round', (options) => {
+					this.adviceCards = options.adviceCards
 				})
 				
 				player.on('state-changed', state => {
@@ -252,10 +264,6 @@
 			},
 			
 			selectCard(isSelf, card) {
-				if (!isSelf) {
-					return
-				}
-				
 				this.current_select = card				
 			},
 			
@@ -325,6 +333,7 @@
 <style lang="scss" scoped>
 	page {
 		background-color: rgb(17,129,238);
+		// background-color: #000;
 	}
 	
 	.container {
@@ -362,11 +371,11 @@
 	
 	.arrow-image {
 		position: absolute;
-		width: 800rpx;
-		height: 800rpx;
+		width: 1000rpx;
+		height: 1000rpx;
 		left: 50%;
 		top: 50%;
-		opacity: .5;
+		opacity: .4;
 	}
 	
 	.arrow-cw {
@@ -374,10 +383,10 @@
 		
 		@keyframes rotatecw {
 			from {
-				transform: translate(-50%, -50%) rotate(0deg) scaleX(-1);
+				transform: translate(-50%, -50%) rotate(0deg);
 			}
 			to {
-				transform: translate(-50%, -50%) rotate(360deg) scaleX(-1);
+				transform: translate(-50%, -50%) rotate(360deg);
 			}
 		}
 	}
@@ -387,10 +396,10 @@
 		
 		@keyframes rotateacw {
 			from {
-				transform: translate(-50%, -50%) rotate(360deg);
+				transform: translate(-50%, -50%) rotate(360deg) scaleX(-1);
 			}
 			to {
-				transform: translate(-50%, -50%) rotate(0deg);
+				transform: translate(-50%, -50%) rotate(0deg) scaleX(-1);
 			}
 		}
 	}
@@ -413,11 +422,12 @@
 		.player {
 			position: absolute;
 			display: flex;
-			align-items: center;
+			// align-items: center;
+			gap: 30rpx;
 			
 			&:nth-child(1) {
 				left: 50%;
-				bottom: 0;
+				bottom: 50rpx;
 				transform: translateX(-50%);
 			}
 			
@@ -437,12 +447,7 @@
 				right: 0;
 				top: 50%;
 				transform: translateY(-50%);
-			}
-			
-			&:nth-child(2), &:nth-child(3), &:nth-child(4) {
-				.cards-wrap {
-					// transform: rotateY(70deg);
-				}
+				flex-direction: row-reverse;
 			}
 			
 			.info-wrap {
@@ -456,26 +461,39 @@
 				word-break: break-all;
 			}
 			
-			.cards-wrap {
+			.back-cards-wrap {
 				display: flex;
-				margin-left: 30rpx;
-				
+				align-items: center;
 				.back-card {
 					position: relative;
 					width: 100rpx;
 					height: 150rpx;
 					box-sizing: border-box;
-					background-color: rgba(255, 255, 255, .8);
-					border: 5rpx solid;
+					background-image: url(../../static/images/back-card.png);
+					background-size: cover;
+					background-position: center;
+					border: 5rpx solid #FFF;
 					border-radius: 15rpx;
-					@for $i from 1 through 500 {
-						&:nth-child(#{$i}) {
-							left: -#{($i - 1) * 60}rpx;
-						}
-					}
 				}
+				.count {
+					color: rgba(231,208,4,1);
+					font-size: 46rpx;
+					font-weight: bold;
+					margin-left: 10rpx;
+				}
+			}
+
+			.cards-wrap {
+				position: relative;
+				display: flex;
+				margin-left: 30rpx;
+				width: 1200rpx;
+				
 				.card {
-					position: relative;
+					flex-shrink: 0;
+					position: absolute;
+					left: 0;
+					top: 0;
 					width: 200rpx;
 					height: 300rpx;
 					color: #FFF;
@@ -490,13 +508,12 @@
 					box-shadow: 0rpx 0rpx 15rpx rgba(0,0,0,.5);
 					transition: all .3s;
 					box-sizing: border-box;
-				}
-				
-				@for $i from 1 through 500 {
-					.card:nth-child(#{$i}) {
-						left: -#{($i - 1) * 100}rpx;
+					
+					&.advice {
+						box-shadow: 0 0 20rpx 15rpx rgba(33, 255, 128, 1.0);
 					}
 				}
+				
 			}
 		}
 	}
