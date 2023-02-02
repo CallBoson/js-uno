@@ -67,7 +67,7 @@ class BasicComputer extends Player {
 					const card = this.transformCard(drawed.card)
 					drawed.replay(card)
 				}
-			}, 1200)
+			}, getRandomNumber(4,8) * 300)
 		})
 		
 		this.on('is-query-wd', (options) => {
@@ -81,7 +81,7 @@ class BasicComputer extends Player {
 			setTimeout(() => {
 				options.doubtFunc(isDoubt)
 				console.log(`${this.nickname}：${options.player.nickname}给我打出了+4`);
-			}, 1500)
+			}, getRandomNumber(4,8) * 300)
 		})
 	}
 }

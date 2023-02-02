@@ -26,6 +26,11 @@
 			return {
 				
 			};
+		},
+		methods: {
+			onClick() {
+				this.$emit('click')
+			}
 		}
 	}
 </script>

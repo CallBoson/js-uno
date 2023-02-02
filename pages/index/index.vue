@@ -51,7 +51,7 @@
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
-	padding: 30rpx 80rpx;
+	padding: 5rem 8rem;
 	height: 100vh;
 	box-sizing: border-box;
 	overflow: hidden;
@@ -60,51 +60,51 @@
 .top-wrap {
 	display: flex;
 	justify-content: space-between;
-	height: 150rpx;
+	height: 70rem;
 	
 	.info-wrap {
 		display: flex;
 		align-items: center;
 		
 		.avatar {
-			width: 150rpx;
-			height: 100%;
-			border: 5rpx solid purple;
-			border-radius: 20rpx;
-			margin-right: 20rpx;
+			width: 70rem;
+			height: 70rem;
+			border: 5rem solid purple;
+			border-radius: 10rem;
+			margin-right: 20rem;
 			box-sizing: border-box;
 			background-color: skyblue;
 		}
 		
 		.name {
-			width: 400rpx;
+			width: 150rem;
 			height: 100%;
-			border: 5rpx solid black;
-			border-radius: 20rpx;
-			padding: 15rpx;
+			border: 5rem solid black;
+			border-radius: 10rem;
+			padding: 8rem;
 			box-sizing: border-box;
-			font-size: 36rpx;
+			font-size: 20rem;
 		}
 	}
 	
 	.coins-wrap {
-		width: 300rpx;
+		width: 130rem;
 		height: 70%;
-		border: 5rpx solid black;
-		border-radius: 20rpx;
-		padding: 15rpx;
+		border: 5rem solid black;
+		border-radius: 10rem;
+		padding: 8rem;
 		box-sizing: border-box;
-		font-size: 40rpx;
+		font-size: 16rem;
 	}
 	
 	.achieve-wrap {
-		width: 500rpx;
+		width: 150rem;
 		height: 100%;
-		border: 5rpx solid black;
-		border-radius: 20rpx;
-		padding: 15rpx;
+		border: 5rem solid black;
+		border-radius: 10rem;
+		padding: 8rem;
 		box-sizing: border-box;
-		font-size: 28rpx;
+		font-size: 20rem;
 	}
 }
 
@@ -115,9 +115,10 @@
 	flex-grow: 1;
 	
 	button {
-		width: 450rpx;
-		height: 700rpx;
-		font-size: 100rpx;
+		width: 150rem;
+		height: 200rem;
+		font-size: 30rem;
+		border-radius: 10rem;
 	}
 }
 
@@ -126,7 +127,7 @@
 	justify-content: space-between;
 	align-items: center;
 	width: 100%;
-	border: 5rpx solid black;
-	height: 100rpx;
+	border: 5rem solid black;
+	height: 48rem;
 }
 </style>
