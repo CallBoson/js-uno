@@ -5,4 +5,5 @@
 
 Uniapp项目，Hbuilder开启项目
 npm install
-![80221675243145_ pic](https://user-images.githubusercontent.com/50889027/216002989-cb33d254-d0ea-44b8-9a64-546fc3c59ea0.jpg)
+
+![2571675327315_ pic_hd](https://user-images.githubusercontent.com/50889027/216274136-b684b6c9-04db-4f2f-9ee2-c7655e72a5d4.jpg)
