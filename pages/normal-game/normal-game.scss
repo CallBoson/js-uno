@@ -158,30 +158,32 @@ page {
 	left: 50%;
 	top: 50%;
 	opacity: .4;
-}
-
-.arrow-cw {
-	animation: rotatecw 5s infinite linear;
+	transition: all 1s;
+	transform: translate(-50%, -50%);
 	
-	@keyframes rotatecw {
-		from {
-			transform: translate(-50%, -50%) rotate(0deg);
-		}
-		to {
-			transform: translate(-50%, -50%) rotate(360deg);
+	&.arrow-cw {
+		animation: rotatecw 5s infinite linear;
+		
+		@keyframes rotatecw {
+			from {
+				transform: translate(-50%, -50%) rotate(0deg);
+			}
+			to {
+				transform: translate(-50%, -50%) rotate(360deg);
+			}
 		}
 	}
-}
 
-.arrow-acw {
-	animation: rotateacw 5s infinite linear;
-	
-	@keyframes rotateacw {
-		from {
-			transform: translate(-50%, -50%) rotate(360deg) scaleX(-1);
-		}
-		to {
-			transform: translate(-50%, -50%) rotate(0deg) scaleX(-1);
+	&.arrow-acw {
+		animation: rotateacw 5s infinite linear;
+		
+		@keyframes rotateacw {
+			from {
+				transform: translate(-50%, -50%) rotate(360deg) scaleX(-1);
+			}
+			to {
+				transform: translate(-50%, -50%) rotate(0deg) scaleX(-1);
+			}
 		}
 	}
 }

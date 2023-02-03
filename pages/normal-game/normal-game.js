@@ -6,6 +6,7 @@ let game = null
 let selectedColorPromise = undefined
 
 const marginChangedEls = []
+let animeObj = {}
 
 export default {
 	components: {
@@ -20,7 +21,8 @@ export default {
 			current_select: {},
 			passCardPool: [],
 			gameSeconds: 0,
-			adviceCards: []
+			adviceCards: [],
+			direction: ''
 		}
 	},
 	onLoad() {
