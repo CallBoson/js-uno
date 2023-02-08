@@ -1,8 +1,45 @@
+import { GenNonDuplicateID } from '../utils/common.js'
+
 // 一张牌
 export class Card {
 	constructor(options) {
+		this.id = GenNonDuplicateID()
 	    this.color = options.color
 		this.symbol = options.symbol
+		this.rank = this.getCardRank()
+	}
+	
+	getCardRank() {
+		// 获取牌的权重，用于牌排序
+		let colorRank = 0
+		let symbolRank = 0
+		if (this.color === 'any') {
+			colorRank = 500
+		} else if (this.color === 'red') {
+			colorRank = 400
+		} else if (this.color === 'yellow') {
+			colorRank = 300
+		} else if (this.color === 'blue') {
+			colorRank = 200
+		} else if (this.color === 'green') {
+			colorRank = 100
+		}
+		
+		if (this.symbol === 'WD') {
+			symbolRank = 90
+		} else if (this.symbol === 'W') {
+			symbolRank = 80
+		} else if (this.symbol === 'S') {
+			symbolRank = 70
+		} else if (this.symbol === 'D') {
+			symbolRank = 60
+		} else if (this.symbol === 'R') {
+			symbolRank = 50
+		} else {
+			symbolRank = Number(this.symbol)
+		}
+		
+		return colorRank + symbolRank
 	}
 }
 

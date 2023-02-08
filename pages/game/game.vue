@@ -5,6 +5,9 @@
 			<view class="rate">{{ rate }}倍场</view>
 			<view class="seconds">{{ gameSeconds }}</view>
 		</view>
+		
+		<view class="state-wrap"></view>
+		
 		<view class="draws-wrap" @click="draw()" :class="current_player.uid === self_user.uid ? 'active' : ''">
 			<view class="cones">
 				<view class="box1"></view>
@@ -13,17 +16,29 @@
 				<view class="box4"></view>
 				<view class="box5"></view>
 			</view>
+			
 			<image src="../../static/images/back-card.png" 
 				mode="aspectFill"
 				v-for="item in 10"></image>
+			<image class="fake-b-card"
+				src="../../static/images/back-card.png"
+				mode="aspectFill"></image>
 		</view>
-		<image class="arrow-image" :class="direction === 'cw' ? 'arrow-cw' : 'arrow-acw'" src="../../static/images/arrow.png" mode="aspectFit"></image>
+		<image class="arrow-image" src="../../static/images/arrow.png" mode="aspectFit"></image>
+		
+		<view class="showing-card-wrap">
+			<view class="showing-card" v-for="(card, cardIndex) in showingCards" :class="card.color">{{ symbol(card.symbol) }}</view>
+		</view>
+		
 		<view class="card-pool-wrap">
 			<view class="card" v-for="(card, cardIndex) in passCardPool" :class="card.color">{{ symbol(card.symbol) }}</view>
 		</view>
 		
 		<view class="players-wrap" @click.self="cancelSelectCard">
-			<view v-for="(player, playerIndex) in players" class="player" :class="current_player === player ? 'current-user' : ''">
+			<view v-for="(player, playerIndex) in players" 
+					class="player" 
+					:class="current_player.uid === player.uid ? 'current-user' : ''"
+					:id="`player-${playerIndex}`">
 				<view class="info-wrap">{{ player.nickname }}</view>
 				<template v-if="player.uid === self_user.uid">
 					<view class="cards-wrap">
@@ -60,10 +75,10 @@
 </template>
 
 <script>
-import NormalGame from './normal-game.js'
-export default NormalGame
+import Game from './game.js'
+export default Game;
 </script>
 
-<style lang="scss" scoped>
-@import './normal-game.scss';
+<style scoped lang="scss">
+@import './game.scss';
 </style>

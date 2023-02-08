@@ -5,6 +5,7 @@ import User from './User.js'
 class Player extends User {
 	cards = []
 	isUno = false // 是否喊了Uno
+	actionState = 'normal' // 回合状态 normal为正常状态
 	
 	constructor(user) {
 		super(user)
@@ -15,7 +16,7 @@ class Player extends User {
 		const removeOne = (card) => {
 			if (card instanceof Card) {
 				this.cards.map((currentCard, currentCardi) => {
-					if (currentCard === card) {
+					if (currentCard.id === card.id) {
 						this.cards.splice(currentCardi, 1)
 					}
 				})

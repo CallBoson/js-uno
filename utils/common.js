@@ -7,3 +7,9 @@ export function GenNonDuplicateID(randomLength) {
 export function getRandomNumber(min, max) {
 	return Math.floor(Math.random() * (max + 1 - min) + min);
 }
+
+export function delay(s) {
+	return new Promise(function(resolve,reject){
+		setTimeout(resolve,s); 
+	});
+};

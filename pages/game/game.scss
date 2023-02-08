@@ -1,3 +1,9 @@
+$state-wrap-z: 13;
+$draws-wrap-z: 12;
+$players-wrap-z: 11;
+$showing-card-wrap-z: 10;
+$card-pool-wrap-z: 9;
+
 page {
 	background-color: rgb(17,129,238);
 	// background-color: #000;
@@ -36,11 +42,19 @@ page {
 	}
 }
 
+.state-wrap {
+	position: absolute;
+	font-size: 35rem;
+	z-index: $state-wrap-z;
+	color: #FFF;
+	font-weight: bold;
+}
+
 .draws-wrap {
 	position: absolute;
 	left: 50rem;
 	top: 50rem;
-	z-index: 5;
+	z-index: $draws-wrap-z;
 	
 	&.active {
 		.cones {
@@ -67,7 +81,7 @@ page {
 		border: 3rem solid #FFF;
 		border-radius: 8rem;
 		
-		@for $i from 1 through 11 {
+		@for $i from 1 through 100 {
 			&:nth-child(#{$i}) {
 				transform: rotateX(45deg) rotateZ(-45deg) translateZ(#{$i*4}rem);
 			}
@@ -157,8 +171,8 @@ page {
 	height: 250rem;
 	left: 50%;
 	top: 50%;
-	opacity: .4;
-	transition: all 1s;
+	opacity: 0;
+	// transition: all 1s;
 	transform: translate(-50%, -50%);
 	
 	&.arrow-cw {
@@ -202,6 +216,7 @@ page {
 .players-wrap {
 	position: relative;
 	height: 100%;
+	z-index: $players-wrap-z;
 	.player {
 		position: absolute;
 		display: flex;
@@ -318,10 +333,33 @@ page {
 	transform: translateY(-30rem);
 }
 
+.showing-card-wrap {
+	position: fixed;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	z-index: $showing-card-wrap-z;
+	opacity: 0;
+	.showing-card {
+		width: 80rem;
+		height: 120rem;
+		color: #FFF;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		font-size: 60rem;
+		font-weight: bold;
+		border: 7rem solid #fff;
+		border-radius: 10rem;
+		box-shadow: 0rpx 0rpx 8rem rgba(0,0,0,.5);
+	}
+}
+
 .card-pool-wrap {
-	position: absolute;
+	position: fixed;
 	left: 50%;
 	top: 50%;
+	z-index: $card-pool-wrap-z;
 	
 	.card {
 		position: absolute;
@@ -346,7 +384,7 @@ page {
 	
 	@for $i from 1 through 500 {
 		.card:nth-child(#{$i}) {
-			transform: translate(-50%, -50%) rotateX(35deg) rotateZ(#{random(90) - 45}deg);
+			transform: rotateX(35deg) translate(-50%, -50%) rotateZ(#{random(90) - 45}deg);
 		}
 	}
 }

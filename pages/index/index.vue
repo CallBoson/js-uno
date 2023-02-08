@@ -36,6 +36,9 @@
 					case 'normal-single':
 						url = '../normal-game/normal-game'
 						break
+					case 'normal-couple':
+						url = '../game/game'
+						break
 				}
 				
 				uni.navigateTo({
