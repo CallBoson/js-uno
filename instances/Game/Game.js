@@ -97,6 +97,7 @@ class Game extends GameActions {
 			// 能打出
 			if (this.settings.gameRules.isForcePlay) {
 				// 强制打出
+				this.uno({ player })
 				this.play({
 					player,
 					card
@@ -117,6 +118,7 @@ class Game extends GameActions {
 				})
 				
 				if (isReplay) {
+					this.uno({ player })
 					this.playRules({ player, card })
 				} else {
 					// 保留 结束回合
@@ -131,6 +133,15 @@ class Game extends GameActions {
 	
 	uno(options) {
 		// 喊uno动作
+		const player = options.player
+		if (!this.basic.isCurrentPlayer(player)) {
+			throw new Error('还未轮到你的回合')
+		}
+		
+		if (this.basic.findPlayer(player).cards.length === 2) {
+			this.setUnoState({ player, isUno: true })
+		}
+		
 	}
 	
 	selectColor(options) {

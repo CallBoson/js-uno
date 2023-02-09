@@ -8,13 +8,14 @@ class GameActions {
 	selectingColorPromise = null
 	doubtPromise = null
 	replayPromise = null
-	
+	overlayCards = [] // 叠加牌池
+
 	constructor() {
-	    this.basic = new Basic()
+		this.basic = new Basic()
 		this.basic.setDeckCards($Cards.normal)
 		this.initEmitter()
 	}
-	
+
 	initEmitter() {
 		this.basic.on('direction-changed', (direction) => {
 			this.basic.boardcast({
@@ -23,7 +24,7 @@ class GameActions {
 				data: direction
 			})
 		})
-		
+
 		this.basic.on('currentplayer-changed', (currentPlayer) => {
 			this.basic.boardcast({
 				to: this.basic.players,
@@ -35,29 +36,29 @@ class GameActions {
 			})
 		})
 	}
-	
+
 	transformUsers(users) {
 		// 用户转换成玩家
 		this.basic.setPlayers(users)
 	}
-	
+
 	startGameDeal(initCardsCount) {
 		// 开局发牌
 		return new Promise(async (resolve) => {
 			const players = this.basic.players
-			for(let i = 0; i < players.length; i++) {
+			for (let i = 0; i < players.length; i++) {
 				await this.deal({
 					to: players[i],
 					cards: this.basic.getRandomCards(initCardsCount)
 				})
 			}
-			
+
 			await delay(1000)
-			
+
 			return resolve()
 		})
 	}
-	
+
 	// 开局抽一张
 	drawStartCard() {
 		let randomCard
@@ -66,7 +67,7 @@ class GameActions {
 		} while (randomCard.color === 'any')
 		this.hit({ cards: randomCard })
 	}
-	
+
 	/**
 	 * 给某个玩家发一张牌
 	 * @property {Player} to 接收玩家
@@ -77,9 +78,11 @@ class GameActions {
 			player: options.to,
 			cards: options.cards
 		})
-		
-		
-		for(let i = 0; i < options.cards.length; i++) {
+
+		// 一旦摸牌就取消uno状态
+		this.setUnoState({ player: options.to, isUno: false })
+
+		for (let i = 0; i < options.cards.length; i++) {
 			// 给全部玩家通知要发牌给谁
 			this.basic.boardcast({
 				to: this.basic.players,
@@ -92,7 +95,7 @@ class GameActions {
 			await delay(200)
 		}
 	}
-	
+
 	/**
 	 * 某玩家打出牌
 	 * @property {Player} from 出牌玩家
@@ -105,9 +108,9 @@ class GameActions {
 				cards: options.cards
 			})
 		}
-		
+
 		this.basic.addPassCards(options.cards)
-		
+
 		this.basic.boardcast({
 			to: this.basic.players,
 			event: 'hit',
@@ -116,10 +119,10 @@ class GameActions {
 				cards: options.cards instanceof Array ? options.cards : [options.cards]
 			}
 		})
-		
+
 		await delay(1000)
 	}
-	
+
 	/**
 	 * 开始计时
 	 */
@@ -138,40 +141,72 @@ class GameActions {
 			}
 		})
 	}
-	
+
 	validateRules(card) {
+		if (this.settings.gameRules.isOverlay && this.overlayCards.length > 0) {
+			// 开启加牌叠加模式且处于加牌中
+			if (this.overlayCards.find(overlayCard => overlayCard.symbol === 'WD')) {
+				// 若存在+4则只能出+4
+				if (card.symbol === 'WD') {
+					return true
+				} else {
+					return false
+				}
+			} else if (card.symbol === 'WD' || card.symbol === 'D') {
+				return true
+			} else {
+				return false
+			}
+		}
+
 		const referCard = this.basic.getLastPassPool() // 牌堆最后一张牌
+
 		if (card.symbol.indexOf('W') != -1) {
 			// 包含W即为万能牌
 			return true
 		}
-		
+
 		if (card.color === referCard.color || card.symbol === referCard.symbol) {
 			// 同色或同数字
 			return true
 		}
-		
+
 		if (this.settings.twoColorAll) {
 			// 双色全出
-			
+
 		}
-		
+
 		return false
 	}
-	
+
 	async playRules(options) {
 		// 出牌具体操作
 		const player = options.player
 		const card = options.card
-		
+
 		const hit = async () => {
 			// 做把牌打出去的动作
 			await this.hit({
 				from: player,
 				cards: card
 			})
+
+			// 没有喊uno+2
+			if (this.basic.findPlayer(player).cards.length === 1 && !this.basic.hasUno(player)) {
+				this.basic.boardcast({
+					to: this.basic.players,
+					event: 'drawed-two',
+					data: player
+				})
+				await this.deal({
+					to: player,
+					cards: this.basic.getRandomCards(2)
+				})
+
+				this.hint({ player: this.basic.players, text: `${player.nickname} 没有喊UNO` })
+			}
 		}
-		
+
 		if (card.symbol.indexOf('W') != -1 && card.color === 'any') {
 			// 打出任意牌并且未转色
 			this.basic.setActionState({
@@ -183,20 +218,20 @@ class GameActions {
 				to: player,
 				event: 'select-color'
 			})
-						
+
 			card.color = await new Promise(resolve => {
 				this.selectingColorPromise = { resolve }
 			})
-			
+
 		}
-		
+
 		if (card.symbol === 'R') {
 			// 转向
 			await hit()
 			this.basic.reverseDirection()
 			await delay(2000)
 			this.nextRound({ player: this.basic.getNextPlayer() })
-			
+
 		} else if (card.symbol === 'S') {
 			// 跳过
 			await hit()
@@ -207,17 +242,19 @@ class GameActions {
 			})
 			await delay(1000)
 			this.nextRound({ player: this.basic.getNextPlayer(this.basic.getNextPlayer()) })
-			
+
 		} else if (card.symbol === 'D') {
 			// +2
 			if (this.settings.gameRules.isOverlay) {
 				// 加牌叠加
+				await this.hit()
+				this.overlayCards.push(card)
 			} else {
 				await hit()
 				this.basic.boardcast({
 					to: this.basic.players,
-					event: 'drawed-two',
-					data: this.basic.getNextPlayer()
+					event: 'drawed',
+					data: { targetPlayer: this.basic.getNextPlayer(), count: 2 }
 				})
 				await this.deal({
 					to: this.basic.getNextPlayer(),
@@ -233,7 +270,7 @@ class GameActions {
 				const lastCard = this.basic.getLastPassPool()
 				const playSide = this.basic.currentPlayer
 				const doubtSide = this.basic.getNextPlayer()
-				
+
 				await hit()
 				this.nextRound({ player: doubtSide, state: 'doubt' })
 				this.basic.boardcast({
@@ -243,7 +280,7 @@ class GameActions {
 				const isDoubt = await new Promise(resolve => {
 					this.doubtPromise = { resolve }
 				})
-				
+
 				if (isDoubt) {
 					if (playSide.cards.some(c => c.color.indexOf('W') === -1 && lastCard.color === c.color)) {
 						// 质疑成功
@@ -272,7 +309,7 @@ class GameActions {
 						await delay(800)
 						this.nextRound({ player: this.basic.getNextPlayer(doubtSide) })
 					}
-					
+
 				} else {
 					// 接受加牌
 					await this.deal({
@@ -289,7 +326,7 @@ class GameActions {
 			this.nextRound({ player: this.basic.getNextPlayer() })
 		}
 	}
-	
+
 	/**
 	 * 开始一个新的回合
 	 * @property {Player} player 哪个玩家的回合
@@ -302,7 +339,7 @@ class GameActions {
 		})
 		this.basic.setCurrentPlayer(options.player)
 	}
-	
+
 	/**
 	 * 发送提示
 	 * @property {Player或Player[]} player
@@ -315,6 +352,25 @@ class GameActions {
 			data: options.text
 		})
 	}
+
+	/**
+	 * 调用该函数后，若玩家uno状态产生变化，则发送广播
+	 * @property {Player} player
+	 * @property {Boolean} isUno 
+	 */
+	setUnoState(options) {
+		const player = options.player
+		const isUno = options.isUno
+		if ((isUno && !this.basic.hasUno(player)) || (!isUno && this.basic.hasUno(player))) {
+			this.basic.setUno({ player, isUno })
+			this.basic.boardcast({
+				to: this.basic.players,
+				event: 'uno-state-changed',
+				data: { player, isUno }
+			})
+		}
+	}
+
 }
 
 export default GameActions

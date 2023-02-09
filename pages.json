@@ -6,16 +6,6 @@
 				"navigationStyle": "custom"
 			}
 		}
-	    ,{
-            "path" : "pages/normal-game/normal-game",
-            "style" :                                                                                    
-            {
-                "navigationBarTitleText": "",
-                "enablePullDownRefresh": false,
-				"navigationStyle": "custom"
-            }
-            
-        }
         ,{
             "path" : "pages/game/game",
             "style" :                                                                                    

@@ -16,10 +16,18 @@ class BasicComputer extends Player {
 	listen() {
 		this.on('currentplayer-changed', options => {
 			if (options.currentPlayer.uid === this.uid) {
-				console.log(`${this.nickname} 的回合，状态：${options.actionState}`);
 				if (options.actionState !== 'normal') return
 				
 				setTimeout(() => {
+					for(let i = 0; i < this.cards.length; i++) {
+						if (this.game.validateRules(this.cards[i])) {
+							this.game.uno({ player: this })
+							this.game.play({ player: this, card: this.cards[i] })
+							return
+						} else {
+							continue
+						}
+					}
 					this.game.draw({ player: this })
 				}, getRandomNumber(5, 15) * 100)
 			}

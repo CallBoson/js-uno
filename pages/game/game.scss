@@ -1,4 +1,5 @@
 $state-wrap-z: 13;
+$uno-btn-z: 13;
 $draws-wrap-z: 12;
 $players-wrap-z: 11;
 $showing-card-wrap-z: 10;
@@ -208,8 +209,24 @@ page {
 	bottom: 20rem;
 	width: 100rem;
 	height: 100rem;
+	z-index: $uno-btn-z;
+	border-radius: 50%;
 	&:active {
 		filter: brightness(80%);
+	}
+	
+	&.uno {
+		animation: unoBtnShine .8s infinite alternate;
+	}
+	
+	@keyframes unoBtnShine {
+		from {
+			box-shadow: 0 0 20rem 0rem yellow;
+		}
+		
+		to {
+			box-shadow: 0 0 20rem 10rem yellow;
+		}
 	}
 }
 
@@ -279,6 +296,16 @@ page {
 				font-weight: bold;
 				margin-left: 6rem;
 			}
+		}
+		
+		.uno-text {
+			position: absolute;
+			left: 50rem;
+			bottom: -40rem;
+			color: yellow;
+			font-size: 30rem;
+			font-weight: bold;
+			transform: skewX(15deg);
 		}
 
 		.cards-wrap {

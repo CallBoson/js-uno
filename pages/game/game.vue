@@ -57,11 +57,17 @@
 						<view class="back-card"></view>
 						<view class="count">x{{ player.cards.length }}</view>
 					</view>
+					<view class="uno-text"
+							:style="{ opacity: player.isUno ? '1' : '0' }">UNO</view>
 				</template>
 			</view>
 		</view>
 		
-		<image class="uno-btn" src="../../static/images/uno-btn.png" mode="aspectFit" @click="uno()"></image>
+		<image class="uno-btn"
+				:class="players[0] && players[0].isUno ? 'uno' : ''"
+				src="../../static/images/uno-btn.png"
+				mode="aspectFit"
+				@click="uno()"></image>
 		
 		<uni-popup ref="color-popup" type="center" :isMaskClick="false">
 			<view class="color-select-wrap">

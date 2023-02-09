@@ -96,25 +96,19 @@ export default {
 		},
 		initEmitter(player) {
 			player.on('deal', options => {
-				this.players.forEach((player, playerIndex) => {
-					if (player.uid === options.to.uid) {
-						const node = document.querySelector('.draws-wrap').appendChild(document.querySelector('.fake-b-card').cloneNode(true))
-						gsap.to(node, {
-							// x: targetEl.offsetLeft,
-							// y: targetEl.offsetTop,
-							x: positions[playerIndex].x,
-							y: positions[playerIndex].y,
-							rotateX: 0,
-							rotateZ: 0,
-							// opacity: 0.6,
-							duration: 0.8,
-							onComplete: () => {
-								player.cards.push(options.card)
-								this.sortCards()
-								const pn = node.parentNode
-								pn.removeChild(node)
-							}
-						})
+				const p = this.findPlayer(options.to)
+				const node = document.querySelector('.draws-wrap').appendChild(document.querySelector('.fake-b-card').cloneNode(true))
+				gsap.to(node, {
+					x: positions[p.index].x,
+					y: positions[p.index].y,
+					rotateX: 0,
+					rotateZ: 0,
+					duration: 0.8,
+					onComplete: () => {
+						p.player.cards.push(options.card)
+						this.sortCards()
+						const pn = node.parentNode
+						pn.removeChild(node)
 					}
 				})
 			})
@@ -135,24 +129,21 @@ export default {
 						})
 					}
 					
-					this.players.forEach((player, playerIndex) => {
-						if (player.uid === options.from.uid) {
-							spliceFromHand(player)
-							this.showingCards = options.cards
-							const ani = gsap.fromTo('.showing-card-wrap', {
-								opacity: 1,
-								x: positions[playerIndex].x,
-								y: positions[playerIndex].y,
-							}, {
-								x: '45vw',
-								y: '45vh',
-								opacity: 1,
-								duration: 1,
-								onComplete: () => {
-									ani.revert()
-									addToPool()
-								}
-							})
+					const p = this.findPlayer(options.from)
+					spliceFromHand(p.player)
+					this.showingCards = options.cards
+					const ani = gsap.fromTo('.showing-card-wrap', {
+						opacity: 1,
+						x: positions[p.index].x,
+						y: positions[p.index].y,
+					}, {
+						x: '45vw',
+						y: '45vh',
+						opacity: 1,
+						duration: 1,
+						onComplete: () => {
+							ani.revert()
+							addToPool()
 						}
 					})
 				} else {
@@ -205,12 +196,7 @@ export default {
 			})
 			
 			player.on('currentplayer-changed', (options) => {
-				this.current_player = options.currentPlayer
-				this.players.forEach(player => {
-					if (player.uid === options.currentPlayer.uid) {
-						this.current_player = player
-					}
-				})
+				this.current_player = this.findPlayer(options.currentPlayer).player
 			})
 			
 			player.on('select-color', () => {
@@ -266,54 +252,47 @@ export default {
 			})
 			
 			player.on('doubt-success', targetPlayer => {
-				this.players.forEach((player, playerIndex) => {
-					if (player.uid === targetPlayer.uid) {
-						this.showStateText({
-							x: positions[playerIndex].x,
-							y: positions[playerIndex].y,
-							text: '质疑成功',
-							color: 'rgb(48,139,15)'
-						})
-					}
+				const p = this.findPlayer(targetPlayer)
+				this.showStateText({
+					x: positions[p.index].x,
+					y: positions[p.index].y,
+					text: '质疑成功',
+					color: 'rgb(48,139,15)'
 				})
 			})
 			player.on('doubt-fail', targetPlayer => {
-				this.players.forEach((player, playerIndex) => {
-					if (player.uid === targetPlayer.uid) {
-						this.showStateText({
-							x: positions[playerIndex].x,
-							y: positions[playerIndex].y,
-							text: '质疑失败',
-							color: 'rgb(195,11,0)'
-						})
-					}
+				const p = this.findPlayer(targetPlayer)
+				this.showStateText({
+					x: positions[p.index].x,
+					y: positions[p.index].y,
+					text: '质疑失败',
+					color: 'rgb(195,11,0)'
 				})
 			})
 			
 			player.on('skiped', targetPlayer => {
-				this.players.forEach((player, playerIndex) => {
-					if (player.uid === targetPlayer.uid) {
-						this.showStateText({
-							x: positions[playerIndex].x,
-							y: positions[playerIndex].y,
-							text: '🈲',
-							color: '#FFF'
-						})
-					}
+				const p = this.findPlayer(targetPlayer)
+				this.showStateText({
+					x: positions[p.index].x,
+					y: positions[p.index].y,
+					text: '🈲',
+					color: '#FFF'
 				})
 			})
 			
-			player.on('drawed-two', targetPlayer => {
-				this.players.forEach((player, playerIndex) => {
-					if (player.uid === targetPlayer.uid) {
-						this.showStateText({
-							x: positions[playerIndex].x,
-							y: positions[playerIndex].y,
-							text: '+2',
-							color: '#FFF'
-						})
-					}
+			player.on('drawed', options => {
+				const p = this.findPlayer(options.targetPlayer)
+				this.showStateText({
+					x: positions[p.index].x,
+					y: positions[p.index].y,
+					text: `+${options.count}`,
+					color: '#FFF'
 				})
+			})
+			
+			player.on('uno-state-changed', options => {
+				const p = this.findPlayer(options.player)
+				p.player.isUno = options.isUno
 			})
 			
 			player.on('hint', text => {
@@ -323,6 +302,16 @@ export default {
 				})
 			})
 			
+		},
+		findPlayer(targetPlayer) {
+			for(let i = 0; i < this.players.length; i++) {
+				if (this.players[i].uid === targetPlayer.uid) {
+					return {
+						player: this.players[i],
+						index: i
+					}
+				}
+			}
 		},
 		showStateText(options) {
 			const x = options.x
@@ -413,20 +402,24 @@ export default {
 		
 		play() {			
 			game.play({
-				player: this.current_player,
+				player: this.players.find(p => p.uid === this.self_user.uid),
 				card: this.current_select
 			})
 			this.recoverMarginChangedEls()
 		},
 		
 		draw() {
-			if (this.current_player.uid !== this.self_user.uid) return
-			
 			game.draw({
-				player: this.current_player,
+				player: this.players.find(p => p.uid === this.self_user.uid),
 			})
 		},
 		
+		uno() {
+			game.uno({
+				player: this.players.find(p => p.uid === this.self_user.uid)
+				
+			})
+		},
 		
 		resolveSelectColor(color) {
 			selectedColorPromise.resolve(color)

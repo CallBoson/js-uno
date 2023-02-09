@@ -228,6 +228,19 @@ class Basic extends EventEmitter {
 		// 返回牌堆最后一张牌
 		return this.passCardPool[this.passCardPool.length - 1] 
 	}
+	
+	/**
+	 * @property {Player} player
+	 * @property {Boolean} isUno 
+	 */
+	setUno(options) {
+		this.findPlayer(options.player).isUno = options.isUno === false ? false : true
+	}
+	
+	hasUno(player) {
+		// 返回玩家是否喊了uno
+		return this.findPlayer(player).isUno
+	}
 }
 
 export default Basic

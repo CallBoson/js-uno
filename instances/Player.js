@@ -51,9 +51,6 @@ class Player extends User {
 			pushOne(cards)
 		}
 		
-		// 只要手牌增加, 就要重新喊uno
-		this.isUno = false
-		
 		return this.cards
 	}
 	
