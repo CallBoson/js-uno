@@ -11,7 +11,7 @@ class Game extends GameActions {
 		initCardsCount: 6, // 初始牌数量
 		isSingleMode: true, // 单人模式/双人模式
 		gameRules: {
-			isOverlay: false, // 加牌叠加
+			isOverlay: true, // 加牌叠加
 			isExchangeCards: false, // 0或7换牌
 			isForcePlay: false, // 摸牌后强制打出
 			isOptionCards: false, // 自选牌
@@ -62,7 +62,7 @@ class Game extends GameActions {
 			throw new Error('还未轮到你的回合')
 		}
 		
-		if (this.basic.getActionState(player) !== 'normal') {
+		if (this.basic.getActionState(player) !== 'normal' && this.basic.getActionState(player) !== 'play') {
 			throw new Error('该玩家不能出牌')
 		}
 		
@@ -171,6 +171,21 @@ class Game extends GameActions {
 		}
 		
 		this.doubtPromise.resolve(isDoubt)
+	}
+
+	overlayDoubt(options) {
+		// 叠加模式的质疑 doubtType: 'draw' || 'doubt' || 'hit'
+		const player = options.player
+		const doubtType = options.doubtType
+		if (!this.basic.isCurrentPlayer(player)) {
+			throw new Error('还未轮到你的回合')
+		}
+		
+		if (this.basic.getActionState(player) !== 'overlay-doubt') {
+			throw new Error('该玩家当前不允许质疑')
+		}
+		
+		this.overlayDoubtPromise.resolve(doubtType)
 	}
 	
 	replay(options) {

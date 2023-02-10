@@ -269,6 +269,47 @@ export default {
 					color: 'rgb(195,11,0)'
 				})
 			})
+
+			player.on('overlay-doubt', () => {
+				const p = this.findPlayer(player)
+				const isDoubt = () => {
+					uni.showModal({
+						content: '对方打出了+4，是否质疑',
+						cancelText: '接受加牌',
+						confirmText: '质疑',
+						success: (res) => {
+							if (res.cancel) {
+								game.overlayDoubt({
+									player,
+									doubtType: 'draw'
+								})
+							} else {
+								game.overlayDoubt({
+									player,
+									doubtType: 'doubt'
+								})
+							}
+						}
+					})
+				}
+				if (p.player.cards.some(c => c.symbol === 'WD')) {
+					uni.showModal({
+						content: '对方打出了+4，是否打出+4？',
+						cancelText: '不打出',
+						confirmText: '打出+4',
+						success: (res) => {
+							if (res.cancel) {
+								isDoubt()
+							} else {
+								game.overlayDoubt({ player, doubtType: 'hit' })
+							}
+						}
+					})
+				} else {
+					isDoubt()
+				}
+				
+			})
 			
 			player.on('skiped', targetPlayer => {
 				const p = this.findPlayer(targetPlayer)

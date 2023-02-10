@@ -16,7 +16,7 @@ class BasicComputer extends Player {
 	listen() {
 		this.on('currentplayer-changed', options => {
 			if (options.currentPlayer.uid === this.uid) {
-				if (options.actionState !== 'normal') return
+				if (options.actionState !== 'normal' && options.actionState !== 'play') return
 				
 				setTimeout(() => {
 					for(let i = 0; i < this.cards.length; i++) {
@@ -58,6 +58,16 @@ class BasicComputer extends Player {
 					player: this,
 					isDoubt: getRandomNumber(0, 100) > 50 ? true : false
 				})
+			}, getRandomNumber(5, 15) * 100)
+		})
+
+		this.on('overlay-doubt', () => {
+			setTimeout(() => {
+				if (this.cards.some(c => c.symbol === 'WD')) {
+					this.game.overlayDoubt({ player: this, doubtType: 'hit' })
+				} else {
+					this.game.overlayDoubt({ player: this, doubtType: getRandomNumber(0, 100) > 50 ? 'doubt' : 'draw' })
+				}
 			}, getRandomNumber(5, 15) * 100)
 		})
 
