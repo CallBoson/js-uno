@@ -199,58 +199,6 @@ export default {
 				this.current_player = this.findPlayer(options.currentPlayer).player
 			})
 			
-			player.on('select-color', () => {
-				this.selectColor().then((color) => {
-					game.selectColor({
-						player,
-						color
-					})
-				})
-				
-			})
-			
-			player.on('replay', () => {
-				uni.showModal({
-					content: '该牌能打出，是否重新打出',
-					cancelText: '保留',
-					confirmText: '打出',
-					success: (res) => {
-						if (res.cancel) {
-							game.replay({
-								player,
-								isReplay: false
-							})
-						} else {
-							game.replay({
-								player,
-								isReplay: true
-							})
-						}
-					}
-				})
-			})
-			
-			player.on('doubt', () => {
-				uni.showModal({
-					content: '对方打出了+4，是否质疑',
-					cancelText: '接受加牌',
-					confirmText: '质疑',
-					success: (res) => {
-						if (res.cancel) {
-							game.doubt({
-								player,
-								isDoubt: false
-							})
-						} else {
-							game.doubt({
-								player,
-								isDoubt: true
-							})
-						}
-					}
-				})
-			})
-			
 			player.on('doubt-success', targetPlayer => {
 				const p = this.findPlayer(targetPlayer)
 				this.showStateText({
@@ -341,6 +289,80 @@ export default {
 					icon: 'none',
 					title: text
 				})
+			})
+
+			player.on('reciprocal-request', state => {
+				switch(state) {
+					case 'select-color': 
+						this.selectColor().then((color) => {
+							game.responseReciprocal({ player, state, option: color })
+						})
+						break;
+
+					case 'doubt': 
+						uni.showModal({
+							content: '对方打出了+4，是否质疑',
+							cancelText: '接受加牌',
+							confirmText: '质疑',
+							success: (res) => {
+								if (res.cancel) {
+									game.responseReciprocal({ player, state, option: 'false' })
+								} else {
+									game.responseReciprocal({ player, state, option: 'true' })
+								}
+							}
+						})
+						break;
+
+					case 'replay': 
+						uni.showModal({
+							content: '该牌能打出，是否重新打出',
+							cancelText: '保留',
+							confirmText: '打出',
+							success: (res) => {
+								if (res.cancel) {
+									game.responseReciprocal({ player, state, option: 'false' })
+								} else {
+									game.responseReciprocal({ player, state, option: 'true' })
+								}
+							}
+						})
+						break;
+
+					case 'overlay-doubt': 
+						const p = this.findPlayer(player)
+						const isDoubt = () => {
+							uni.showModal({
+								content: '对方打出了+4，是否质疑',
+								cancelText: '接受加牌',
+								confirmText: '质疑',
+								success: (res) => {
+									if (res.cancel) {
+										game.responseReciprocal({ player, state, option: 'draw' })
+									} else {
+										game.responseReciprocal({ player, state, option: 'doubt' })
+									}
+								}
+							})
+						}
+						if (p.player.cards.some(c => c.symbol === 'WD')) {
+							uni.showModal({
+								content: '对方打出了+4，是否打出+4？',
+								cancelText: '不打出',
+								confirmText: '打出+4',
+								success: (res) => {
+									if (res.cancel) {
+										isDoubt()
+									} else {
+										game.responseReciprocal({ player, state, option: 'hit' })
+									}
+								}
+							})
+						} else {
+							isDoubt()
+						}
+						break;
+				}
 			})
 			
 		},

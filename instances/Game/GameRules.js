@@ -69,20 +69,7 @@ class GameRules {
 
 		if (card.symbol.indexOf('W') != -1 && card.color === 'any') {
 			// 打出任意牌并且未转色
-			this.basic.setActionState({
-				player,
-				state: 'select-color'
-			})
-
-			this.basic.boardcast({
-				to: player,
-				event: 'select-color'
-			})
-
-			card.color = await new Promise(resolve => {
-				this.selectingColorPromise = { resolve }
-			})
-
+			card.color = await this.waitResponse({ to: player, state: 'select-color' })
 		}
 
 		if (card.symbol === 'R') {
@@ -159,15 +146,8 @@ class GameRules {
 				// 判断叠加数组是否第一次打出+4
 				if (this.overlayCards.length === 1) {
 					// 若第一次打出+4，下一家可以选择接受加牌(draw)/质疑(doubt)/打出+4(hit)
-
-					this.nextRound({ player: doubtSide, state: 'overlay-doubt' })
-					this.basic.boardcast({
-						to: doubtSide,
-						event: 'overlay-doubt'
-					})
-					let doubtType = await new Promise(resolve => {
-						this.overlayDoubtPromise = { resolve }
-					})
+					this.nextRound({ player: doubtSide })
+					let doubtType = await this.waitResponse({ to: doubtSide, state: 'overlay-doubt' })
 
                     // 若选择打出+4但没有+4牌则选择加牌
                     if (doubtType === 'hit' && !doubtSide.cards.some(c => c.symbol === 'WD')) {
@@ -249,16 +229,10 @@ class GameRules {
 				}
 			} else {
 				await hit()
-				this.nextRound({ player: doubtSide, state: 'doubt' })
-				this.basic.boardcast({
-					to: doubtSide,
-					event: 'doubt'
-				})
-				const isDoubt = await new Promise(resolve => {
-					this.doubtPromise = { resolve }
-				})
+				this.nextRound({ player: doubtSide })
+				const isDoubt = await this.waitResponse({ to: player, state: 'doubt' })
 
-				if (isDoubt) {
+				if (isDoubt === 'true') {
 					if (playSide.cards.some(c => c.color.indexOf('W') === -1 && lastCard.color === c.color)) {
 						// 质疑成功
 						this.basic.boardcast({

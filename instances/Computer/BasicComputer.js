@@ -32,43 +32,38 @@ class BasicComputer extends Player {
 				}, getRandomNumber(5, 15) * 100)
 			}
 		})
-		
-		this.on('select-color', () => {
-			const color = ['red', 'yellow', 'blue', 'green'][getRandomNumber(0, 3)]
-			setTimeout(() => {
-				this.game.selectColor({
-					player: this,
-					color
-				})
-			}, getRandomNumber(5, 15) * 100)
-		})
-		
-		this.on('replay', () => {
-			setTimeout(() => {
-				this.game.replay({
-					player: this,
-					isReplay: true
-				})
-			}, getRandomNumber(5, 15) * 100)
-		})
-		
-		this.on('doubt', () => {
-			setTimeout(() => {
-				this.game.doubt({
-					player: this,
-					isDoubt: getRandomNumber(0, 100) > 50 ? true : false
-				})
-			}, getRandomNumber(5, 15) * 100)
-		})
 
-		this.on('overlay-doubt', () => {
-			setTimeout(() => {
-				if (this.cards.some(c => c.symbol === 'WD')) {
-					this.game.overlayDoubt({ player: this, doubtType: 'hit' })
-				} else {
-					this.game.overlayDoubt({ player: this, doubtType: getRandomNumber(0, 100) > 50 ? 'doubt' : 'draw' })
-				}
-			}, getRandomNumber(5, 15) * 100)
+		this.on('reciprocal-request', state => {
+			switch(state) {
+				case 'select-color':
+					const color = ['red', 'yellow', 'blue', 'green'][getRandomNumber(0, 3)]
+					setTimeout(() => {
+						this.game.responseReciprocal({ player: this, state, option: color })
+					}, getRandomNumber(5, 15) * 100)
+					break;
+
+				case 'doubt': 
+					setTimeout(() => {
+						this.game.responseReciprocal({ player: this, state, option: getRandomNumber(0, 100) > 50 ? 'true' : 'false' })
+					}, getRandomNumber(5, 15) * 100)
+					break;
+
+				case 'replay': 
+					setTimeout(() => {
+						this.game.responseReciprocal({ player: this, state, option: 'true' })
+					}, getRandomNumber(5, 15) * 100)
+					break;
+
+				case 'overlay-doubt': 
+					setTimeout(() => {
+						if (this.cards.some(c => c.symbol === 'WD')) {
+							this.game.responseReciprocal({ player: this, state, option: 'hit' })
+						} else {
+							this.game.responseReciprocal({ player: this, state, option: getRandomNumber(0, 100) > 50 ? 'doubt' : 'draw' })
+						}
+					}, getRandomNumber(5, 15) * 100)
+					break;
+			}
 		})
 
 	}

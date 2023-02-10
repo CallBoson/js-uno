@@ -6,10 +6,13 @@ import GameRules from './GameRules.js'
 // 游戏具体实现类
 class GameActions extends GameRules {
 	basic = null
-	selectingColorPromise = null
-	doubtPromise = null
-	replayPromise = null
-	overlayDoubtPromise = null
+	waitResponsePromises = {
+		'select-color': { promise: null, options: ['red', 'yellow', 'blue', 'green'] },
+		'doubt': { promise: null, options: ['true', 'false'] },
+		'replay': { promise: null, options: ['true', 'false'] },
+		'overlay-doubt': { promise: null, options: ['draw', 'doubt', 'hit'] },
+	} // 交互类型
+
 	overlayCards = [] // 叠加牌池
 
 	constructor() {
@@ -187,6 +190,21 @@ class GameActions extends GameRules {
 				data: { player, isUno }
 			})
 		}
+	}
+
+	/**
+	 * 给玩家发送交互请求，并等待玩家反馈结果
+	 * @property {Player} to 玩家
+	 * @property {String} state 具体交互 
+	 */
+	waitResponse(options) {
+		const to = options.to
+		const state = options.state
+		this.basic.setActionState({ player: to, state })
+		this.basic.boardcast({ to, event: 'reciprocal-request', data: state })
+		return new Promise(resolve => {
+			this.waitResponsePromises[state]['promise'] = { resolve }
+		})
 	}
 
 }

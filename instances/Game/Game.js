@@ -82,7 +82,7 @@ class Game extends GameActions {
 		}
 		
 		if (this.basic.getActionState(player) !== 'normal') {
-			throw new Error('该玩家不能出牌')
+			throw new Error('该玩家不能抽牌')
 		}
 		
 		const [card] = this.basic.getRandomCards(1)
@@ -104,20 +104,9 @@ class Game extends GameActions {
 				})
 				this.hint({ player, text: '当前为强制出牌模式，摸牌后自动打出' })
 			} else {
-				this.basic.setActionState({
-					player,
-					state: 'replay'
-				})
-				this.basic.boardcast({
-					to: player,
-					event: 'replay'
-				})
-
-				const isReplay = await new Promise(resolve => {
-					this.replayPromise = { resolve }
-				})
+				const isReplay = await this.waitResponse({ to: player, state: 'replay' })
 				
-				if (isReplay) {
+				if (isReplay === 'true') {
 					this.uno({ player })
 					this.playRules({ player, card })
 				} else {
@@ -144,64 +133,31 @@ class Game extends GameActions {
 		
 	}
 	
-	selectColor(options) {
+	/**
+	 * 回复交互请求
+	 * @property {Player} player 回复人
+	 * @property {String} state 哪一个交互状态
+	 * @property {String} option 回复的值
+	 */
+	responseReciprocal(options) {
 		const player = options.player
-		const color = options.color
-		
-		if (!this.basic.isCurrentPlayer(player)) {
-			throw new Error('还未轮到你的回合')
-		}
-		
-		if (this.basic.getActionState(player) !== 'select-color') {
-			throw new Error('该玩家当前不允许转换颜色')
-		}
-		
-		this.selectingColorPromise.resolve(color)
-	}
-	
-	doubt(options) {
-		const player = options.player
-		const isDoubt = options.isDoubt
-		if (!this.basic.isCurrentPlayer(player)) {
-			throw new Error('还未轮到你的回合')
-		}
-		
-		if (this.basic.getActionState(player) !== 'doubt') {
-			throw new Error('该玩家当前不允许质疑')
-		}
-		
-		this.doubtPromise.resolve(isDoubt)
-	}
+		const state = options.state
+		const option = options.option
 
-	overlayDoubt(options) {
-		// 叠加模式的质疑 doubtType: 'draw' || 'doubt' || 'hit'
-		const player = options.player
-		const doubtType = options.doubtType
 		if (!this.basic.isCurrentPlayer(player)) {
 			throw new Error('还未轮到你的回合')
 		}
 		
-		if (this.basic.getActionState(player) !== 'overlay-doubt') {
-			throw new Error('该玩家当前不允许质疑')
+		if (this.basic.getActionState(player) !== state) {
+			throw new Error('回复的交互类型错误')
 		}
 		
-		this.overlayDoubtPromise.resolve(doubtType)
+		if (!this.waitResponsePromises[state]['options'].includes(option)) {
+			throw new Error('回复的可选交互参数不存在')
+		}
+
+		this.waitResponsePromises[state]['promise'].resolve(option)
 	}
-	
-	replay(options) {
-		const player = options.player
-		const isReplay = options.isReplay
-		if (!this.basic.isCurrentPlayer(player)) {
-			throw new Error('还未轮到你的回合')
-		}
-		
-		if (this.basic.getActionState(player) !== 'replay') {
-			throw new Error('该玩家当前不允许打出')
-		}
-		
-		this.replayPromise.resolve(isReplay)
-	}
-	
 	
 }
 
