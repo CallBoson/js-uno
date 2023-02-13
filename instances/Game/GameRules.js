@@ -90,12 +90,43 @@ class GameRules {
 			await delay(1000)
 			this.nextRound({ player: this.basic.getNextPlayer(this.basic.getNextPlayer()) })
 
-		} else if (card.symbol === 'D') {
+		} else if (card.symbol === 'D' || card.symbol === 'WD') {
+			await this.handleDrawCard(options, hit)
+		} else {
+			// 普通同色或同数字牌
+			await hit()
+			this.nextRound({ player: this.basic.getNextPlayer() })
+		}
+	}
+
+	async handleDrawCard(options, hit) {
+		const player = options.player
+		const card = options.card
+
+		const settleOverlayCard = async (to) => {
+			// 结算叠加数组
+			const sumOverlay = this.overlayCards.reduce( (accumulator, currentCard) => accumulator + (currentCard.symbol === 'D' ? 2 : 4), 0 )
+			this.basic.boardcast({
+				to: this.basic.players,
+				event: 'drawed',
+				data: { targetPlayer: to, count: sumOverlay }
+			})
+			await this.deal({
+				to,
+				cards: this.basic.getRandomCards(sumOverlay)
+			})
+
+			// 清空叠加数组
+			this.overlayCards = []
+		}
+
+		await hit()
+		this.overlayCards.push(card)
+
+		if (card.symbol === 'D') {
 			// +2
 			if (this.settings.gameRules.isOverlay) {
-				// 加牌叠加
-				await hit()
-				this.overlayCards.push(card)
+				// 加牌叠加模式
 
 				// 判断下一家有没有+2或+4
 				if (this.basic.getNextPlayer().cards.some(c => c.symbol === 'D' || c.symbol === 'WD')) {
@@ -103,34 +134,14 @@ class GameRules {
 					this.nextRound({ player: this.basic.getNextPlayer(), state: 'play' })
 				} else {
 					// 没有则将叠加数组内牌全部加到下一玩家
-					const sumOverlay = this.overlayCards.reduce( (accumulator, currentCard) => accumulator + (currentCard.symbol === 'D' ? 2 : 4), 0 )
-					this.basic.boardcast({
-						to: this.basic.players,
-						event: 'drawed',
-						data: { targetPlayer: this.basic.getNextPlayer(), count: sumOverlay }
-					})
-					await this.deal({
-						to: this.basic.getNextPlayer(),
-						cards: this.basic.getRandomCards(sumOverlay)
-					})
-
-					// 清空叠加数组
-					this.overlayCards = []
+					await settleOverlayCard(this.basic.getNextPlayer())
 
 					// 跳过被加牌玩家
 					this.nextRound({ player: this.basic.getNextPlayer(this.basic.getNextPlayer()) })
 				}
 			} else {
-				await hit()
-				this.basic.boardcast({
-					to: this.basic.players,
-					event: 'drawed',
-					data: { targetPlayer: this.basic.getNextPlayer(), count: 2 }
-				})
-				await this.deal({
-					to: this.basic.getNextPlayer(),
-					cards: this.basic.getRandomCards(2)
-				})
+				// 非加牌叠加模式直接清空数组
+				await settleOverlayCard(this.basic.getNextPlayer())
 				this.nextRound({ player: this.basic.getNextPlayer(this.basic.getNextPlayer()) })
 			}
 		} else if (card.symbol === 'WD') {
@@ -138,10 +149,37 @@ class GameRules {
             const lastCard = this.basic.getLastPassPool()
             const playSide = this.basic.currentPlayer
             const doubtSide = this.basic.getNextPlayer()
+			const handleDoubt = async () => {
+				if (playSide.cards.some(c => c.color.indexOf('W') === -1 && lastCard.color === c.color)) {
+					// 质疑成功
+					this.basic.boardcast({
+						to: this.basic.players,
+						event: 'doubt-success',
+						data: doubtSide
+					})
+					await this.deal({
+						to: playSide,
+						cards: this.basic.getRandomCards(4)
+					})
+					await delay(800)
+					this.nextRound({ player: doubtSide })
+				} else {
+					// 质疑失败
+					this.basic.boardcast({
+						to: this.basic.players,
+						event: 'doubt-fail',
+						data: doubtSide
+					})
+					await this.deal({
+						to: doubtSide,
+						cards: this.basic.getRandomCards(6)
+					})
+					await delay(800)
+					this.nextRound({ player: this.basic.getNextPlayer(doubtSide) })
+				}
+			}
 			if (this.settings.gameRules.isOverlay) {
 				// 加牌叠加
-				await hit()
-				this.overlayCards.push(card)
 
 				// 判断叠加数组是否第一次打出+4
 				if (this.overlayCards.length === 1) {
@@ -156,42 +194,12 @@ class GameRules {
 
 					if (doubtType === 'draw') {
 						// 接受加牌
-                        this.overlayCards = []
-                        await this.deal({
-                            to: doubtSide,
-                            cards: this.basic.getRandomCards(4)
-                        })
+						await settleOverlayCard(doubtSide)
                         await delay(800)
                         this.nextRound({ player: this.basic.getNextPlayer(doubtSide) })
 					} else if (doubtType === 'doubt') {
 						// 质疑
-                        if (playSide.cards.some(c => c.color.indexOf('W') === -1 && lastCard.color === c.color)) {
-                            // 质疑成功
-                            this.basic.boardcast({
-                                to: this.basic.players,
-                                event: 'doubt-success',
-                                data: doubtSide
-                            })
-                            await this.deal({
-                                to: playSide,
-                                cards: this.basic.getRandomCards(4)
-                            })
-                            await delay(800)
-                            this.nextRound({ player: doubtSide })
-                        } else {
-                            // 质疑失败
-                            this.basic.boardcast({
-                                to: this.basic.players,
-                                event: 'doubt-fail',
-                                data: doubtSide
-                            })
-                            await this.deal({
-                                to: doubtSide,
-                                cards: this.basic.getRandomCards(6)
-                            })
-                            await delay(800)
-                            this.nextRound({ player: this.basic.getNextPlayer(doubtSide) })
-                        }
+                        await handleDoubt()
                         this.overlayCards = []
 
 					} else if (doubtType === 'hit') {
@@ -209,72 +217,26 @@ class GameRules {
 						this.nextRound({ player: this.basic.getNextPlayer(), state: 'play' })
 					} else {
 						// 没有则将叠加数组内牌全部加到下一玩家
-						const sumOverlay = this.overlayCards.reduce( (accumulator, currentCard) => accumulator + (currentCard.symbol === 'D' ? 2 : 4), 0 )
-						this.basic.boardcast({
-							to: this.basic.players,
-							event: 'drawed',
-							data: { targetPlayer: this.basic.getNextPlayer(), count: sumOverlay }
-						})
-						await this.deal({
-							to: this.basic.getNextPlayer(),
-							cards: this.basic.getRandomCards(sumOverlay)
-						})
-
-						// 清空叠加数组
-						this.overlayCards = []
-
+						await settleOverlayCard(this.basic.getNextPlayer())
 						// 跳过被加牌玩家
 						this.nextRound({ player: this.basic.getNextPlayer(this.basic.getNextPlayer()) })
 					}
 				}
 			} else {
-				await hit()
 				this.nextRound({ player: doubtSide })
 				const isDoubt = await this.waitResponse({ to: player, state: 'doubt' })
 
 				if (isDoubt === 'true') {
-					if (playSide.cards.some(c => c.color.indexOf('W') === -1 && lastCard.color === c.color)) {
-						// 质疑成功
-						this.basic.boardcast({
-							to: this.basic.players,
-							event: 'doubt-success',
-							data: doubtSide
-						})
-						await this.deal({
-							to: playSide,
-							cards: this.basic.getRandomCards(4)
-						})
-						await delay(800)
-						this.nextRound({ player: doubtSide })
-					} else {
-						// 质疑失败
-						this.basic.boardcast({
-							to: this.basic.players,
-							event: 'doubt-fail',
-							data: doubtSide
-						})
-						await this.deal({
-							to: doubtSide,
-							cards: this.basic.getRandomCards(6)
-						})
-						await delay(800)
-						this.nextRound({ player: this.basic.getNextPlayer(doubtSide) })
-					}
+					await handleDoubt()
+					this.overlayCards = []
 
 				} else {
 					// 接受加牌
-					await this.deal({
-						to: doubtSide,
-						cards: this.basic.getRandomCards(4)
-					})
+					await settleOverlayCard(doubtSide)
 					await delay(800)
 					this.nextRound({ player: this.basic.getNextPlayer(doubtSide) })
 				}
 			}
-		} else {
-			// 普通同色或同数字牌
-			await hit()
-			this.nextRound({ player: this.basic.getNextPlayer() })
 		}
 	}
 }
